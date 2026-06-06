@@ -2,13 +2,14 @@ package com.acme.coldtrace.platform.identityaccess.interfaces.rest;
 
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.UserCommandService;
 import com.acme.coldtrace.platform.identityaccess.application.queryservices.UserQueryService;
-import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetAllUsersQuery;
+import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetUsersByOrganizationIdQuery;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.CreateUserResource;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.UserResource;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.CreateUserCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.ResponseEntityFromUserCommandResultAssembler;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.ResponseEntityFromUserQueryResultAssembler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,9 +19,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,7 +39,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  */
 @Slf4j
 @RestController
-@RequestMapping(value = "/users", produces = APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/organizations/{organizationId}/users", produces = APPLICATION_JSON_VALUE)
 @Tag(name = "Users", description = "Endpoints for users")
 public class UsersController {
     private final UserCommandService userCommandService;
@@ -54,20 +57,34 @@ public class UsersController {
     }
 
     /**
-     * Gets all users.
+     * Gets users that belong to an organization.
      *
+     * @param organizationId organization identifier used to filter users
      * @return response entity containing user resources
      */
-    @Operation(summary = "Get all users", description = "Gets all registered users")
+    @Operation(summary = "Get users by organization", description = "Gets users that belong to the provided organization")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Users found",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserResource.class))))
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserResource.class)))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid organization identifier",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @GetMapping
-    public ResponseEntity<?> getAllUsers() {
-        log.debug("GET /users");
-        var users = userQueryService.handle(new GetAllUsersQuery());
-        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromList(users);
+    public ResponseEntity<?> getUsersByOrganizationId(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId) {
+        if (organizationId == null || organizationId <= 0) {
+            var detail = messageSource.getMessage("identity-access.user.error.organizationId.invalid", null,
+                    "identity-access.user.error.organizationId.invalid", org.springframework.context.i18n.LocaleContextHolder.getLocale());
+            var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+            problem.setTitle("Bad Request");
+            return ResponseEntity.badRequest().body(problem);
+        }
+        log.debug("GET /organizations/{}/users", organizationId);
+        var users = userQueryService.handle(new GetUsersByOrganizationIdQuery(organizationId));
+        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromResult(users, messageSource);
     }
 
     /**
@@ -89,13 +106,18 @@ public class UsersController {
             @ApiResponse(responseCode = "400", description = "Bad request",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Conflict - email already exists",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or role not found",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @PostMapping(consumes = APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserResource resource) {
-        log.debug("POST /users - email={}, organizationId={}, roleId={}",
-                resource.email(), resource.organizationId(), resource.roleId());
-        var command = CreateUserCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<?> createUser(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Valid @RequestBody CreateUserResource resource) {
+        log.debug("POST /organizations/{}/users - email={}, roleId={}",
+                organizationId, resource.email(), resource.roleId());
+        var command = CreateUserCommandFromResourceAssembler.toCommandFromResource(resource, organizationId);
         var user = userCommandService.handle(command);
         return ResponseEntityFromUserCommandResultAssembler.toResponseEntityFromResult(user, messageSource);
     }

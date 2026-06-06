@@ -13,14 +13,15 @@ public class CreateUserCommandFromResourceAssembler {
      * Converts a CreateUserResource to a CreateUserCommand.
      *
      * @param resource user creation request resource
+     * @param organizationId organization identifier from the route
      * @return create user command
      */
-    public static CreateUserCommand toCommandFromResource(CreateUserResource resource) {
+    public static CreateUserCommand toCommandFromResource(CreateUserResource resource, Long organizationId) {
         return new CreateUserCommand(
                 resource.firstName(),
                 resource.lastName(),
                 resource.email(),
-                resource.organizationId(),
+                organizationId,
                 resource.roleId()
         );
     }

@@ -23,7 +23,7 @@ public record CreateOrganizationCommand(
     public CreateOrganizationCommand {
         legalName = requireNonBlank(legalName, "identity-access.organization.error.legalName.required");
         commercialName = requireNonBlank(commercialName, "identity-access.organization.error.commercialName.required");
-        taxId = taxId == null ? "" : taxId.trim();
+        taxId = normalizeOptional(taxId);
         contactEmail = requireNonBlank(contactEmail, "identity-access.organization.error.contactEmail.required")
                 .toLowerCase();
         if (!contactEmail.contains("@")) {
@@ -41,6 +41,19 @@ public record CreateOrganizationCommand(
     private static String requireNonBlank(String value, String messageKey) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(messageKey);
+        }
+        return value.trim();
+    }
+
+    /**
+     * Normalizes optional string input.
+     *
+     * @param value input value
+     * @return trimmed value or null when blank
+     */
+    private static String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
         return value.trim();
     }

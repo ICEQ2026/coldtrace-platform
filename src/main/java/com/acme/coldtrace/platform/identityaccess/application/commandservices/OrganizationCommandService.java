@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.identityaccess.application.commandservices;
 
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Organization;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateOrganizationCommand;
+import com.acme.coldtrace.platform.shared.application.result.Result;
 
 /**
  * Application service contract for organization command operations.
@@ -15,9 +16,9 @@ public interface OrganizationCommandService {
      * Handles organization creation.
      *
      * @param command command containing organization legal, commercial, and contact data
-     * @return created organization aggregate
+     * @return success with created organization or failure with an organization command error
      * @throws IllegalArgumentException if the command contains invalid organization data
      * @see CreateOrganizationCommand
      */
-    Organization handle(CreateOrganizationCommand command);
+    Result<Organization, OrganizationCommandFailure> handle(CreateOrganizationCommand command);
 }

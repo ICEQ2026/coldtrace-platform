@@ -1,9 +1,11 @@
 package com.acme.coldtrace.platform.identityaccess.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.identityaccess.application.commandservices.OrganizationCommandFailure;
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.OrganizationCommandService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Organization;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateOrganizationCommand;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
+import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +30,23 @@ public class OrganizationCommandServiceImpl implements OrganizationCommandServic
      * Handles creation of an organization aggregate.
      *
      * @param command command containing organization data
-     * @return created organization aggregate
+     * @return success with created organization or failure with an organization command error
      * @throws IllegalArgumentException if command data is invalid
      * @see CreateOrganizationCommand
      */
     @Override
     @Transactional
-    public Organization handle(CreateOrganizationCommand command) {
+    public Result<Organization, OrganizationCommandFailure> handle(CreateOrganizationCommand command) {
+        if (organizationRepository.existsByContactEmailIgnoreCase(command.contactEmail())) {
+            log.warn("Duplicate organization contact email detected: {}", command.contactEmail());
+            return Result.failure(new OrganizationCommandFailure.DuplicateContactEmail());
+        }
+        if (command.taxId() != null && organizationRepository.existsByTaxIdIgnoreCase(command.taxId())) {
+            log.warn("Duplicate organization tax id detected: {}", command.taxId());
+            return Result.failure(new OrganizationCommandFailure.DuplicateTaxId());
+        }
         var organization = organizationRepository.save(new Organization(command));
         log.info("Organization created: id={}, contactEmail={}", organization.getId(), organization.getContactEmail());
-        return organization;
+        return Result.success(organization);
     }
 }

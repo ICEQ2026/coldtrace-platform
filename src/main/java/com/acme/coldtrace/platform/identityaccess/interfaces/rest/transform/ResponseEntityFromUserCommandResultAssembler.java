@@ -50,6 +50,10 @@ public class ResponseEntityFromUserCommandResultAssembler {
         if (failure instanceof UserCommandFailure.DuplicateEmail) {
             return HttpStatus.CONFLICT;
         }
+        if (failure instanceof UserCommandFailure.OrganizationNotFound ||
+                failure instanceof UserCommandFailure.RoleNotFound) {
+            return HttpStatus.NOT_FOUND;
+        }
         return HttpStatus.BAD_REQUEST;
     }
 

@@ -1,7 +1,8 @@
 package com.acme.coldtrace.platform.identityaccess.application.queryservices;
 
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
-import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetAllUsersQuery;
+import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetUsersByOrganizationIdQuery;
+import com.acme.coldtrace.platform.shared.application.result.Result;
 
 import java.util.List;
 
@@ -12,11 +13,11 @@ import java.util.List;
  */
 public interface UserQueryService {
     /**
-     * Retrieves all users.
+     * Retrieves users by organization.
      *
-     * @param query query object representing the all-users request
-     * @return list of users, possibly empty
-     * @see GetAllUsersQuery
+     * @param query query object containing the organization identifier
+     * @return success with users, possibly empty, or failure when the organization does not exist
+     * @see GetUsersByOrganizationIdQuery
      */
-    List<User> handle(GetAllUsersQuery query);
+    Result<List<User>, UserQueryFailure> handle(GetUsersByOrganizationIdQuery query);
 }

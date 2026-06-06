@@ -1,7 +1,7 @@
 package com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform;
 
-import com.acme.coldtrace.platform.identityaccess.application.commandservices.OrganizationCommandFailure;
-import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Organization;
+import com.acme.coldtrace.platform.identityaccess.application.commandservices.OrganizationSignUpCommandFailure;
+import com.acme.coldtrace.platform.identityaccess.application.commandservices.OrganizationSignUpCommandResult;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -12,25 +12,25 @@ import org.springframework.http.ResponseEntity;
 import static org.springframework.http.HttpStatus.CREATED;
 
 /**
- * Interface layer translator converting organization command results to HTTP responses.
+ * Interface layer translator converting organization sign-up command results to HTTP responses.
  *
  * @since 1.0
  */
-public class ResponseEntityFromOrganizationCommandResultAssembler {
+public class ResponseEntityFromOrganizationSignUpCommandResultAssembler {
     /**
-     * Converts an organization command result into an HTTP response.
+     * Converts an organization sign-up command result into an HTTP response.
      *
-     * @param result organization command result
+     * @param result organization sign-up command result
      * @param messageSource message source for localized failure details
      * @return 201 response on success or error response on failure
      */
     public static ResponseEntity<?> toResponseEntityFromResult(
-            Result<Organization, OrganizationCommandFailure> result,
+            Result<OrganizationSignUpCommandResult, OrganizationSignUpCommandFailure> result,
             MessageSource messageSource
     ) {
         return result.fold(
-                organization -> new ResponseEntity<>(
-                        OrganizationResourceFromEntityAssembler.toResourceFromEntity(organization),
+                signUp -> new ResponseEntity<>(
+                        OrganizationSignUpResourceFromResultAssembler.toResourceFromResult(signUp),
                         CREATED
                 ),
                 failure -> {
@@ -44,27 +44,26 @@ public class ResponseEntityFromOrganizationCommandResultAssembler {
     }
 
     /**
-     * Maps an organization command failure to an HTTP status.
+     * Maps an organization sign-up command failure to an HTTP status.
      *
-     * @param failure organization command failure
+     * @param failure sign-up command failure
      * @return HTTP status for the failure
      */
-    private static HttpStatus statusFromFailure(OrganizationCommandFailure failure) {
-        if (failure instanceof OrganizationCommandFailure.DuplicateContactEmail ||
-                failure instanceof OrganizationCommandFailure.DuplicateTaxId) {
-            return HttpStatus.CONFLICT;
+    private static HttpStatus statusFromFailure(OrganizationSignUpCommandFailure failure) {
+        if (failure instanceof OrganizationSignUpCommandFailure.InitialRoleNotFound) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
         }
-        return HttpStatus.BAD_REQUEST;
+        return HttpStatus.CONFLICT;
     }
 
     /**
-     * Resolves the localized message for an organization command failure.
+     * Resolves the localized message for an organization sign-up command failure.
      *
      * @param messageSource message source for i18n
-     * @param failure organization command failure
+     * @param failure sign-up command failure
      * @return localized message or message key fallback
      */
-    private static String localizeMessage(MessageSource messageSource, OrganizationCommandFailure failure) {
+    private static String localizeMessage(MessageSource messageSource, OrganizationSignUpCommandFailure failure) {
         return messageSource.getMessage(
                 failure.messageKey(),
                 failure.args(),

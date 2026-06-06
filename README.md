@@ -131,12 +131,13 @@ The first business endpoints should preserve the same resource names and field
 names used by `coldtrace-frontend/server/db.json`. Collection reads should return
 arrays directly unless the frontend assembler is updated first.
 
-Expected replacement endpoints:
+Expected backend endpoints:
 
-| Context | Frontend path | Operations currently used |
+| Context | Backend path | Operations |
 | --- | --- | --- |
+| `identityaccess` | `/organization-sign-ups` | `POST` |
 | `identityaccess` | `/organizations` | `GET`, `POST` |
-| `identityaccess` | `/users` | `GET`, `POST`, `PUT /users/{id}` |
+| `identityaccess` | `/organizations/{organizationId}/users` | `GET`, `POST` |
 | `identityaccess` | `/roles` | `GET`, `PUT /roles/{id}` |
 | `identityaccess` | `/password-reset-requests` | declared for password recovery, real flow deferred |
 | `assetmanagement` | `/assets` | `GET`, `POST`, `PUT /assets/{id}` |
@@ -150,19 +151,21 @@ Expected replacement endpoints:
 | `maintenancemanagement` | `/maintenance-schedules` | `GET`, `POST`, `PUT /maintenance-schedules/{id}` |
 | `maintenancemanagement` | `/technical-service-requests` | `GET`, `POST`, `PUT /technical-service-requests/{id}` |
 
-The Angular environment also declares `/authentication/sign-up` and
-`/authentication/sign-in`, but the current screens do not call real
-authentication endpoints. Sign-up creates an organization and a user through the
-collection endpoints above; sign-in reads users, roles, and organizations and
-checks a temporary local password. Do not implement JWT/session behavior before
-the corresponding sprint ticket.
+The ideal backend sign-up endpoint is `/organization-sign-ups`. It creates the
+organization and its first super administrator user in one transaction. The
+Angular frontend must be adapted away from JSON Server-style ID calculation and
+two-step organization/user creation before consuming this contract. The Angular
+environment also declares `/authentication/sign-up` and `/authentication/sign-in`,
+but real authentication, JWT/session behavior, and password reset flows remain
+deferred until the corresponding sprint ticket.
 
 Use these frontend resource fields as the backend DTO contract:
 
 | Resource | Fields |
 | --- | --- |
 | `organizations` | `id`, `legalName`, `commercialName`, `taxId`, `contactEmail` |
-| `users` | `id`, `uuid`, `organizationUserId`, `firstName`, `lastName`, `email`, `organizationId`, `roleId` |
+| `organization-sign-ups` | request: `legalName`, `commercialName`, `taxId`, `contactEmail`, `firstName`, `lastName`, `email`; response: `organization`, `user` |
+| `users` | response: `id`, `uuid`, `organizationUserId`, `firstName`, `lastName`, `email`, `organizationId`, `roleId`; create request under `/organizations/{organizationId}/users`: `firstName`, `lastName`, `email`, `roleId` |
 | `roles` | `id`, `name`, `label`, `permissions` |
 | `assets` | `id`, `organizationId`, `uuid`, `type`, `gatewayId`, `name`, `location`, `capacity`, `description`, `status`, `lastIncident`, `currentTemperature`, `entryDate`, `connectivity` |
 | `gateways` | `id`, `organizationId`, `uuid`, `name`, `location`, `network`, `status` |
