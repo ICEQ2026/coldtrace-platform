@@ -1,16 +1,28 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.commands;
 
+/**
+ * Command for creating a user.
+ *
+ * @param firstName user first name
+ * @param lastName user last name
+ * @param email user email address
+ * @param organizationId organization identifier
+ * @param roleId role identifier
+ * @since 1.0
+ */
 public record CreateUserCommand(
-        String uuid,
-        Long organizationUserId,
         String firstName,
         String lastName,
         String email,
         Long organizationId,
         Long roleId
 ) {
+    /**
+     * Validates and normalizes user creation data.
+     *
+     * @throws IllegalArgumentException if required fields or references are invalid
+     */
     public CreateUserCommand {
-        uuid = uuid == null || uuid.isBlank() ? null : uuid.trim();
         firstName = requireNonBlank(firstName, "identity-access.user.error.firstName.required");
         lastName = lastName == null ? "" : lastName.trim();
         email = requireNonBlank(email, "identity-access.user.error.email.required").toLowerCase();
@@ -25,6 +37,13 @@ public record CreateUserCommand(
         }
     }
 
+    /**
+     * Requires a non-blank string value and returns it trimmed.
+     *
+     * @param value input value
+     * @param messageKey message key used when the value is blank
+     * @return trimmed input value
+     */
     private static String requireNonBlank(String value, String messageKey) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(messageKey);

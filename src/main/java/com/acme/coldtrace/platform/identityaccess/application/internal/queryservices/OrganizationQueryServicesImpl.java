@@ -10,6 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Application service implementation for organization query operations.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @Service
 @Transactional(readOnly = true)
@@ -20,6 +25,13 @@ public class OrganizationQueryServicesImpl implements OrganizationQueryService {
         this.organizationRepository = organizationRepository;
     }
 
+    /**
+     * Retrieves all organizations from persistence.
+     *
+     * @param query query object representing the all-organizations request
+     * @return list of organizations, possibly empty
+     * @see GetAllOrganizationsQuery
+     */
     @Override
     public List<Organization> handle(GetAllOrganizationsQuery query) {
         log.debug("Querying all organizations");

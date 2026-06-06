@@ -13,6 +13,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Application service implementation for user command operations.
+ * It enforces application-level creation rules such as unique email and valid
+ * organization-role references before persisting the user aggregate.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @Service
 public class UserCommandServiceImpl implements UserCommandService {
@@ -30,6 +37,14 @@ public class UserCommandServiceImpl implements UserCommandService {
         this.roleRepository = roleRepository;
     }
 
+    /**
+     * Handles creation of a user aggregate.
+     *
+     * @param command command containing user data and references
+     * @return success with the created user or failure with a command failure type
+     * @throws DataIntegrityViolationException if an unexpected persistence constraint is violated
+     * @see CreateUserCommand
+     */
     @Override
     @Transactional
     public Result<User, UserCommandFailure> handle(CreateUserCommand command) {

@@ -8,6 +8,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Seeds identity access reference data required by the frontend contract.
+ * It creates the default roles and permissions when they are not already present.
+ *
+ * @since 1.0
+ */
 @Component
 public class IdentityAccessDataInitializer implements ApplicationRunner {
     private static final Permission MANAGE_ADMINISTRATORS = new Permission(
@@ -96,6 +102,13 @@ public class IdentityAccessDataInitializer implements ApplicationRunner {
         );
     }
 
+    /**
+     * Seeds one role when it does not exist by name.
+     *
+     * @param name stable role name
+     * @param label display label for the role
+     * @param permissions permissions assigned to the role
+     */
     private void seedRole(String name, String label, List<Permission> permissions) {
         if (roleRepository.existsByName(name)) {
             return;
