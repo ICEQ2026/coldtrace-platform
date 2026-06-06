@@ -28,6 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+/**
+ * REST controller exposing user endpoints.
+ * It translates HTTP requests into user commands and queries for identity access.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @RestController
 @RequestMapping(value = "/users", produces = APPLICATION_JSON_VALUE)
@@ -47,6 +53,11 @@ public class UsersController {
         this.messageSource = messageSource;
     }
 
+    /**
+     * Gets all users.
+     *
+     * @return response entity containing user resources
+     */
     @Operation(summary = "Get all users", description = "Gets all registered users")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Users found",
@@ -59,6 +70,12 @@ public class UsersController {
         return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromList(users);
     }
 
+    /**
+     * Creates a user.
+     *
+     * @param resource user creation request resource
+     * @return response entity containing the created user resource or failure detail
+     */
     @Operation(
             summary = "Create a user",
             description = "Creates a user linked to an organization and role",

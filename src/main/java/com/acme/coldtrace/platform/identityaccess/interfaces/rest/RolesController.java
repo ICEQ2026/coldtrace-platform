@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+/**
+ * REST controller exposing role endpoints.
+ * It provides role and permission metadata required by the frontend.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @RestController
 @RequestMapping(value = "/roles", produces = APPLICATION_JSON_VALUE)
@@ -30,6 +36,11 @@ public class RolesController {
         this.roleQueryService = roleQueryService;
     }
 
+    /**
+     * Gets all roles and their permissions.
+     *
+     * @return response entity containing role resources
+     */
     @Operation(summary = "Get all roles", description = "Gets all roles and their permissions")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Roles found",

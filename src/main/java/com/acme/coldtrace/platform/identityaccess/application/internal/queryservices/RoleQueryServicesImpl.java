@@ -10,6 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Application service implementation for role query operations.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @Service
 @Transactional(readOnly = true)
@@ -20,6 +25,13 @@ public class RoleQueryServicesImpl implements RoleQueryService {
         this.roleRepository = roleRepository;
     }
 
+    /**
+     * Retrieves all roles from persistence.
+     *
+     * @param query query object representing the all-roles request
+     * @return list of roles, possibly empty
+     * @see GetAllRolesQuery
+     */
     @Override
     public List<Role> handle(GetAllRolesQuery query) {
         log.debug("Querying all roles");

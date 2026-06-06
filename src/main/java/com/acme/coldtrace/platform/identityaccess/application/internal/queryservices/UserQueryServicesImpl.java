@@ -10,6 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Application service implementation for user query operations.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @Service
 @Transactional(readOnly = true)
@@ -20,6 +25,13 @@ public class UserQueryServicesImpl implements UserQueryService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Retrieves all users from persistence.
+     *
+     * @param query query object representing the all-users request
+     * @return list of users, possibly empty
+     * @see GetAllUsersQuery
+     */
     @Override
     public List<User> handle(GetAllUsersQuery query) {
         log.debug("Querying all users");

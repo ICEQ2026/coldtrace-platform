@@ -3,7 +3,18 @@ package com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.UserResource;
 
+/**
+ * Interface layer translator converting user aggregates to resources.
+ *
+ * @since 1.0
+ */
 public class UserResourceFromEntityAssembler {
+    /**
+     * Converts a user aggregate to a UserResource.
+     *
+     * @param entity user aggregate
+     * @return user response resource
+     */
     public static UserResource toResourceFromEntity(User entity) {
         return new UserResource(
                 entity.getId(),

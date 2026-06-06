@@ -9,6 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 
+/**
+ * User aggregate for the identity access context.
+ * It represents a person linked to an organization and role.
+ *
+ * @since 1.0
+ */
 @Getter
 @Entity
 @Table(name = "users")
@@ -39,6 +45,12 @@ public class User {
     protected User() {
     }
 
+    /**
+     * Creates a user from a create command.
+     *
+     * @param command command containing user identity data and organization-role references
+     * @see CreateUserCommand
+     */
     public User(CreateUserCommand command) {
         this.firstName = command.firstName();
         this.lastName = command.lastName();

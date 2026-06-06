@@ -16,6 +16,13 @@ import lombok.Getter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Role aggregate for authorization metadata used by the frontend.
+ * A role groups permissions and provides stable role names such as
+ * {@code super-admin}, {@code administrator}, and {@code operator}.
+ *
+ * @since 1.0
+ */
 @Getter
 @Entity
 @Table(name = "roles")
@@ -37,6 +44,13 @@ public class Role {
     protected Role() {
     }
 
+    /**
+     * Creates a role with a display label and permission set.
+     *
+     * @param name stable role identifier
+     * @param label display label for the role
+     * @param permissions permissions assigned to the role
+     */
     public Role(String name, String label, List<Permission> permissions) {
         this.name = name.trim();
         this.label = label.trim();

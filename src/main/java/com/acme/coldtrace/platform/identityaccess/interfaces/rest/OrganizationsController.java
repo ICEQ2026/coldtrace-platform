@@ -27,6 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+/**
+ * REST controller exposing organization endpoints.
+ * It translates HTTP requests into application commands and queries for the
+ * identity access bounded context.
+ *
+ * @since 1.0
+ */
 @Slf4j
 @RestController
 @RequestMapping(value = "/organizations", produces = APPLICATION_JSON_VALUE)
@@ -43,6 +50,11 @@ public class OrganizationsController {
         this.organizationQueryService = organizationQueryService;
     }
 
+    /**
+     * Gets all organizations.
+     *
+     * @return response entity containing organization resources
+     */
     @Operation(summary = "Get all organizations", description = "Gets the organizations available for sign-up flows")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Organizations found",
@@ -55,6 +67,12 @@ public class OrganizationsController {
         return ResponseEntityFromOrganizationQueryResultAssembler.toResponseEntityFromList(organizations);
     }
 
+    /**
+     * Creates an organization.
+     *
+     * @param resource organization creation request resource
+     * @return response entity containing the created organization resource
+     */
     @Operation(
             summary = "Create an organization",
             description = "Creates an organization with the provided legal, commercial, and contact data",
