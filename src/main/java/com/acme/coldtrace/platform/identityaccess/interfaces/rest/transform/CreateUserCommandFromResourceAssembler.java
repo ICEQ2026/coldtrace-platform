@@ -6,8 +6,6 @@ import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.Crea
 public class CreateUserCommandFromResourceAssembler {
     public static CreateUserCommand toCommandFromResource(CreateUserResource resource) {
         return new CreateUserCommand(
-                resource.uuid(),
-                resource.organizationUserId(),
                 resource.firstName(),
                 resource.lastName(),
                 resource.email(),

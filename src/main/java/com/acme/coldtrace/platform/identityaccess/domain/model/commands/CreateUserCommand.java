@@ -1,8 +1,6 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.commands;
 
 public record CreateUserCommand(
-        String uuid,
-        Long organizationUserId,
         String firstName,
         String lastName,
         String email,
@@ -10,7 +8,6 @@ public record CreateUserCommand(
         Long roleId
 ) {
     public CreateUserCommand {
-        uuid = uuid == null || uuid.isBlank() ? null : uuid.trim();
         firstName = requireNonBlank(firstName, "identity-access.user.error.firstName.required");
         lastName = lastName == null ? "" : lastName.trim();
         email = requireNonBlank(email, "identity-access.user.error.email.required").toLowerCase();

@@ -40,8 +40,6 @@ public class User {
     }
 
     public User(CreateUserCommand command) {
-        this.uuid = command.uuid();
-        this.organizationUserId = command.organizationUserId();
         this.firstName = command.firstName();
         this.lastName = command.lastName();
         this.email = command.email();
