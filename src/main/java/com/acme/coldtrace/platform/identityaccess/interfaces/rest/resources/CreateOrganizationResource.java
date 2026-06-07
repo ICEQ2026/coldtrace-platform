@@ -1,8 +1,5 @@
 package com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
 /**
  * Request resource used to create an organization.
  *
@@ -13,16 +10,12 @@ import jakarta.validation.constraints.NotBlank;
  * @since 1.0
  */
 public record CreateOrganizationResource(
-        @NotBlank
         String legalName,
 
-        @NotBlank
         String commercialName,
 
         String taxId,
 
-        @NotBlank
-        @Email
         String contactEmail
 ) {
 }

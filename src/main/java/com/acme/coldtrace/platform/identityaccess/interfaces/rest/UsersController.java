@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -75,16 +74,9 @@ public class UsersController {
     public ResponseEntity<?> getUsersByOrganizationId(
             @Parameter(name = "organizationId", description = "Organization identifier", required = true)
             @PathVariable Long organizationId) {
-        if (organizationId == null || organizationId <= 0) {
-            var detail = messageSource.getMessage("identity-access.user.error.organizationId.invalid", null,
-                    "identity-access.user.error.organizationId.invalid", org.springframework.context.i18n.LocaleContextHolder.getLocale());
-            var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
-            problem.setTitle("Bad Request");
-            return ResponseEntity.badRequest().body(problem);
-        }
         log.debug("GET /organizations/{}/users", organizationId);
         var users = userQueryService.handle(new GetUsersByOrganizationIdQuery(organizationId));
-        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromResult(users, messageSource);
+        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromList(users);
     }
 
     /**
@@ -110,7 +102,7 @@ public class UsersController {
             @ApiResponse(responseCode = "404", description = "Organization or role not found",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @PostMapping
     public ResponseEntity<?> createUser(
             @Parameter(name = "organizationId", description = "Organization identifier", required = true)
             @PathVariable Long organizationId,

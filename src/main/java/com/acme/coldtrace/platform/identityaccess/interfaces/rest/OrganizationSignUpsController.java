@@ -68,7 +68,7 @@ public class OrganizationSignUpsController {
             @ApiResponse(responseCode = "500", description = "Initial role is missing",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @PostMapping
     public ResponseEntity<?> signUpOrganization(@Valid @RequestBody CreateOrganizationSignUpResource resource) {
         log.debug("POST /organization-sign-ups - organizationContactEmail={}, userEmail={}",
                 resource.contactEmail(), resource.email());
