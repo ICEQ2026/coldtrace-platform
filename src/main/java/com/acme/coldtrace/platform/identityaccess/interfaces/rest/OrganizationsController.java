@@ -92,7 +92,7 @@ public class OrganizationsController {
             @ApiResponse(responseCode = "409", description = "Conflict - organization already exists",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @PostMapping
     public ResponseEntity<?> createOrganization(@Valid @RequestBody CreateOrganizationResource resource) {
         log.debug("POST /organizations - contactEmail={}", resource.contactEmail());
         var command = CreateOrganizationCommandFromResourceAssembler.toCommandFromResource(resource);
