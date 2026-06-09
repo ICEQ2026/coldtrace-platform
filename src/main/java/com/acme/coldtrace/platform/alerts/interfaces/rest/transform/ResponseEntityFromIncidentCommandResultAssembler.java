@@ -67,7 +67,8 @@ public class ResponseEntityFromIncidentCommandResultAssembler {
 
     private static HttpStatus statusFromFailure(IncidentCommandFailure failure) {
         if (failure instanceof IncidentCommandFailure.OrganizationNotFound ||
-                failure instanceof IncidentCommandFailure.IncidentNotFound) {
+                failure instanceof IncidentCommandFailure.IncidentNotFound ||
+                failure instanceof IncidentCommandFailure.AssetNotFound) {
             return HttpStatus.NOT_FOUND;
         }
         if (failure instanceof IncidentCommandFailure.AlreadyAcknowledged ||

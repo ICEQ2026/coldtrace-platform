@@ -9,6 +9,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCo
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.NotificationRepository;
+import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.AssetRepository;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Application service implementation for incident command operations.
+ * <p>
+ * Incident commands are organization-scoped. Creation validates that the
+ * organization exists and, when the request references an asset, that the asset
+ * also belongs to the same organization. This keeps incident records aligned
+ * with the asset management bounded context and prevents alerts from being
+ * linked to assets outside the selected organization boundary.
  *
  * @since 1.0
  */
@@ -25,15 +32,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class IncidentCommandServiceImpl implements IncidentCommandService {
     private final IncidentRepository incidentRepository;
     private final NotificationRepository notificationRepository;
+    private final AssetRepository assetRepository;
     private final OrganizationRepository organizationRepository;
 
     public IncidentCommandServiceImpl(
             IncidentRepository incidentRepository,
             NotificationRepository notificationRepository,
+            AssetRepository assetRepository,
             OrganizationRepository organizationRepository
     ) {
         this.incidentRepository = incidentRepository;
         this.notificationRepository = notificationRepository;
+        this.assetRepository = assetRepository;
         this.organizationRepository = organizationRepository;
     }
 
@@ -49,6 +59,12 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
         if (!organizationRepository.existsById(command.organizationId())) {
             log.warn("Organization not found for incident creation: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
+        }
+        if (command.assetId() != null &&
+                assetRepository.findByIdAndOrganizationId(command.assetId(), command.organizationId()).isEmpty()) {
+            log.warn("Asset not found for incident creation: organizationId={}, assetId={}",
+                    command.organizationId(), command.assetId());
+            return Result.failure(new IncidentCommandFailure.AssetNotFound());
         }
 
         var incident = incidentRepository.save(new Incident(command));

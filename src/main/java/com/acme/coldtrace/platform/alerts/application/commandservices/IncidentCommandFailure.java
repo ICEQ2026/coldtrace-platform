@@ -8,6 +8,7 @@ package com.acme.coldtrace.platform.alerts.application.commandservices;
 public sealed interface IncidentCommandFailure
         permits IncidentCommandFailure.OrganizationNotFound,
         IncidentCommandFailure.IncidentNotFound,
+        IncidentCommandFailure.AssetNotFound,
         IncidentCommandFailure.AlreadyAcknowledged,
         IncidentCommandFailure.AlreadyResolved,
         IncidentCommandFailure.InvalidLifecycleTransition {
@@ -40,6 +41,20 @@ public sealed interface IncidentCommandFailure
         @Override
         public String messageKey() {
             return "alerts.incident.error.incident-not-found";
+        }
+    }
+
+    /**
+     * Asset not found failure.
+     * <p>
+     * This failure protects organization-scoped incident creation from
+     * referencing an asset that either does not exist or belongs to another
+     * organization.
+     */
+    record AssetNotFound() implements IncidentCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.incident.error.asset-not-found";
         }
     }
 
