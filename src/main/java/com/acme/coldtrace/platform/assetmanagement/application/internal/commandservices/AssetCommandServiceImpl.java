@@ -6,7 +6,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.LocationRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;

@@ -5,7 +5,7 @@ import com.acme.coldtrace.platform.assetmanagement.application.commandservices.L
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Location;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateLocationCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateLocationCommand;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.LocationRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public class LocationCommandServiceImpl implements LocationCommandService {
             log.warn("Organization not found for location creation: organizationId={}", command.organizationId());
             return Result.failure(new LocationCommandFailure.OrganizationNotFound());
         }
-        if (locationRepository.existsByOrganizationIdAndNameIgnoreCase(command.organizationId(), command.name())) {
+        if (locationRepository.existsByOrganizationIdAndName(command.organizationId(), command.name())) {
             log.warn("Duplicate location name detected: organizationId={}, name={}",
                     command.organizationId(), command.name());
             return Result.failure(new LocationCommandFailure.DuplicateName());
@@ -90,7 +90,7 @@ public class LocationCommandServiceImpl implements LocationCommandService {
                     command.organizationId(), command.locationId());
             return Result.failure(new LocationCommandFailure.LocationNotFound());
         }
-        if (locationRepository.existsByOrganizationIdAndNameIgnoreCaseAndIdNot(
+        if (locationRepository.existsByOrganizationIdAndNameAndIdNot(
                 command.organizationId(), command.name(), command.locationId())) {
             log.warn("Duplicate location name detected for update: organizationId={}, locationId={}, name={}",
                     command.organizationId(), command.locationId(), command.name());
