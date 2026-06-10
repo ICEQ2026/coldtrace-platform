@@ -3,8 +3,10 @@ package com.acme.coldtrace.platform.identityaccess.interfaces.rest;
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.UserCommandService;
 import com.acme.coldtrace.platform.identityaccess.application.queryservices.UserQueryService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetUsersByOrganizationIdQuery;
+import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.AssignUserRoleResource;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.CreateUserResource;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources.UserResource;
+import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.AssignUserRoleCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.CreateUserCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.ResponseEntityFromUserCommandResultAssembler;
 import com.acme.coldtrace.platform.identityaccess.interfaces.rest.transform.ResponseEntityFromUserQueryResultAssembler;
@@ -22,6 +24,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -112,5 +115,52 @@ public class UsersController {
         var command = CreateUserCommandFromResourceAssembler.toCommandFromResource(resource, organizationId);
         var user = userCommandService.handle(command);
         return ResponseEntityFromUserCommandResultAssembler.toResponseEntityFromResult(user, messageSource);
+    }
+
+    /**
+     * Assigns a role to an existing organization user.
+     * <p>
+     * The endpoint is organization-scoped, so the application service verifies
+     * that the user belongs to the organization before applying the new role.
+     *
+     * @param organizationId organization identifier from the route
+     * @param userId user identifier from the route
+     * @param resource role assignment request resource
+     * @return response entity containing the updated user resource or failure detail
+     */
+    @Operation(
+            summary = "Assign a user role",
+            description = "Assigns an existing role to an existing user inside the provided organization",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "User role assignment request",
+                    content = @Content(schema = @Schema(implementation = AssignUserRoleResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User role assigned",
+                    content = @Content(schema = @Schema(implementation = UserResource.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization, user or role not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PatchMapping("/{userId}/role")
+    public ResponseEntity<?> assignUserRole(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "userId", description = "User identifier", required = true)
+            @PathVariable Long userId,
+            @Valid @RequestBody AssignUserRoleResource resource) {
+        log.debug("PATCH /organizations/{}/users/{}/role - roleId={}",
+                organizationId, userId, resource.roleId());
+        var command = AssignUserRoleCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                userId
+        );
+        var user = userCommandService.handle(command);
+        return ResponseEntityFromUserCommandResultAssembler.toResponseEntityFromRoleAssignmentResult(
+                user,
+                messageSource
+        );
     }
 }
