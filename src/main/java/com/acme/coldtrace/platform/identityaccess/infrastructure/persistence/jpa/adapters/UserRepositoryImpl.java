@@ -8,6 +8,7 @@ import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA-backed adapter for the user domain repository.
@@ -27,6 +28,12 @@ public class UserRepositoryImpl implements UserRepository {
         return userPersistenceRepository.findAllByOrganizationId(organizationId).stream()
                 .map(UserPersistenceAssembler::toDomainFromPersistence)
                 .toList();
+    }
+
+    @Override
+    public Optional<User> findByIdAndOrganizationId(Long id, Long organizationId) {
+        return userPersistenceRepository.findByIdAndOrganizationId(id, organizationId)
+                .map(UserPersistenceAssembler::toDomainFromPersistence);
     }
 
     @Override
