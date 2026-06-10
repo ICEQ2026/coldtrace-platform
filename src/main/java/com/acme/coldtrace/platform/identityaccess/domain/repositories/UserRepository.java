@@ -3,6 +3,7 @@ package com.acme.coldtrace.platform.identityaccess.domain.repositories;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Domain repository contract for user aggregates.
@@ -17,6 +18,19 @@ public interface UserRepository {
      * @return users for the organization
      */
     List<User> findAllByOrganizationId(Long organizationId);
+
+    /**
+     * Finds a user by its identifier and organization.
+     * <p>
+     * This method is used by organization-scoped commands to guarantee that a
+     * user can only be modified through the organization route where the user
+     * actually belongs.
+     *
+     * @param id user identifier
+     * @param organizationId organization identifier
+     * @return matching user when it belongs to the organization
+     */
+    Optional<User> findByIdAndOrganizationId(Long id, Long organizationId);
 
     /**
      * Persists a user aggregate.

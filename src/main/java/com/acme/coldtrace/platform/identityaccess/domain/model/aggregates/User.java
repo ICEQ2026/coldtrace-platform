@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.identityaccess.domain.model.commands.AssignUserRoleCommand;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateUserCommand;
 import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.EmailAddress;
 import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
@@ -87,5 +88,23 @@ public class User extends AbstractDomainAggregateRoot<User> {
      */
     public EmailAddress getEmailValue() {
         return this.email;
+    }
+
+    /**
+     * Assigns a new role to this user.
+     * <p>
+     * Role existence and organization membership are application concerns
+     * validated before this method is invoked. The aggregate only protects its
+     * own invariant: a persisted user must always keep a valid role reference.
+     *
+     * @param command command containing the target role identifier
+     * @throws IllegalArgumentException if the role identifier is invalid
+     * @see AssignUserRoleCommand
+     */
+    public void assignRole(AssignUserRoleCommand command) {
+        if (command.roleId() == null || command.roleId() <= 0) {
+            throw new IllegalArgumentException("identity-access.user.error.roleId.invalid");
+        }
+        this.roleId = command.roleId();
     }
 }

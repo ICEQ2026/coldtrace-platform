@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data JPA repository for user persistence entities.
@@ -21,6 +22,15 @@ public interface UserPersistenceRepository extends JpaRepository<UserPersistence
      * @return persistence entities for the organization
      */
     List<UserPersistenceEntity> findAllByOrganizationId(Long organizationId);
+
+    /**
+     * Finds one user by identifier and organization.
+     *
+     * @param id user identifier
+     * @param organizationId organization identifier
+     * @return persistence entity when the user belongs to the organization
+     */
+    Optional<UserPersistenceEntity> findByIdAndOrganizationId(Long id, Long organizationId);
 
     /**
      * Checks whether an email exists.
