@@ -6,20 +6,8 @@ import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentC
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.IncidentSeverity;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.IncidentStatus;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.NotificationStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.AbstractAggregateRoot;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
@@ -30,63 +18,27 @@ import java.time.Instant;
  * @since 1.0
  */
 @Getter
-@Entity
-@EntityListeners(AuditingEntityListener.class)
-@Table(name = "incidents")
-public class Incident extends AbstractAggregateRoot<Incident> {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class Incident extends AbstractDomainAggregateRoot<Incident> {
     private Long id;
-
-    @Column(nullable = false)
     private Long organizationId;
-
     private Long assetId;
-
     private Long deviceId;
-
     private Long readingId;
-
     private String assetName;
     private String deviceName;
-
-    @Column(nullable = false)
     private String type;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private IncidentSeverity severity;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private IncidentStatus status;
-
     private String value;
-
-    @Column(nullable = false)
     private Instant detectedAt;
-
     private Instant acknowledgedAt;
     private String acknowledgedBy;
-
     private Instant resolvedAt;
     private String resolvedBy;
     private String resolutionNotes;
-
-    @Enumerated(EnumType.STRING)
     private NotificationStatus lastNotificationStatus;
-
     private Instant lastNotificationAt;
-
     private Integer notificationCount;
-
-    @Column(nullable = false, updatable = false)
-    @CreatedDate
-    private Instant createdAt;
-
-    @Column(nullable = false)
-    @LastModifiedDate
-    private Instant updatedAt;
 
     protected Incident() {
     }
@@ -110,6 +62,74 @@ public class Incident extends AbstractAggregateRoot<Incident> {
         this.value = command.value();
         this.detectedAt = Instant.now();
         this.notificationCount = 0;
+    }
+
+    /**
+     * Rebuilds an incident aggregate from persistence state.
+     *
+     * @param id incident identifier assigned by persistence
+     * @param organizationId organization that owns the incident
+     * @param assetId optional asset identifier
+     * @param deviceId optional device identifier
+     * @param readingId optional reading identifier
+     * @param assetName optional asset display name
+     * @param deviceName optional device display name
+     * @param type incident type
+     * @param severity incident severity
+     * @param status lifecycle status
+     * @param value detected value
+     * @param detectedAt detection timestamp
+     * @param acknowledgedAt acknowledgement timestamp
+     * @param acknowledgedBy acknowledgement actor
+     * @param resolvedAt resolution timestamp
+     * @param resolvedBy resolution actor
+     * @param resolutionNotes resolution notes
+     * @param lastNotificationStatus last notification status
+     * @param lastNotificationAt last notification timestamp
+     * @param notificationCount emitted notification count
+     */
+    public Incident(
+            Long id,
+            Long organizationId,
+            Long assetId,
+            Long deviceId,
+            Long readingId,
+            String assetName,
+            String deviceName,
+            String type,
+            IncidentSeverity severity,
+            IncidentStatus status,
+            String value,
+            Instant detectedAt,
+            Instant acknowledgedAt,
+            String acknowledgedBy,
+            Instant resolvedAt,
+            String resolvedBy,
+            String resolutionNotes,
+            NotificationStatus lastNotificationStatus,
+            Instant lastNotificationAt,
+            Integer notificationCount
+    ) {
+        this.id = id;
+        this.organizationId = organizationId;
+        this.assetId = assetId;
+        this.deviceId = deviceId;
+        this.readingId = readingId;
+        this.assetName = assetName;
+        this.deviceName = deviceName;
+        this.type = type;
+        this.severity = severity;
+        this.status = status;
+        this.value = value;
+        this.detectedAt = detectedAt;
+        this.acknowledgedAt = acknowledgedAt;
+        this.acknowledgedBy = acknowledgedBy;
+        this.resolvedAt = resolvedAt;
+        this.resolvedBy = resolvedBy;
+        this.resolutionNotes = resolutionNotes;
+        this.lastNotificationStatus = lastNotificationStatus;
+        this.lastNotificationAt = lastNotificationAt;
+        this.notificationCount = notificationCount;
     }
 
     /**

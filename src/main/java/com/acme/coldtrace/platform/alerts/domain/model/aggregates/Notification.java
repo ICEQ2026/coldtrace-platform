@@ -2,20 +2,8 @@ package com.acme.coldtrace.platform.alerts.domain.model.aggregates;
 
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.NotificationChannel;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.NotificationStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.AbstractAggregateRoot;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
@@ -25,43 +13,17 @@ import java.time.Instant;
  * @since 1.0
  */
 @Getter
-@Entity
-@EntityListeners(AuditingEntityListener.class)
-@Table(name = "notifications")
-public class Notification extends AbstractAggregateRoot<Notification> {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class Notification extends AbstractDomainAggregateRoot<Notification> {
     private Long id;
-
-    @Column(nullable = false)
     private Long organizationId;
-
-    @Column(nullable = false)
     private Long incidentId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private NotificationChannel channel;
-
     private String recipient;
-
-    @Column(nullable = false)
     private String message;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private NotificationStatus status;
-
+    private Instant createdAt;
     private Instant deliveredAt;
     private String failureReason;
-
-    @Column(nullable = false, updatable = false)
-    @CreatedDate
-    private Instant createdAt;
-
-    @Column(nullable = false)
-    @LastModifiedDate
-    private Instant updatedAt;
 
     protected Notification() {
     }
@@ -74,6 +36,44 @@ public class Notification extends AbstractAggregateRoot<Notification> {
         this.message = message;
         this.status = NotificationStatus.SENT;
         this.deliveredAt = Instant.now();
+    }
+
+    /**
+     * Rebuilds a notification aggregate from persistence state.
+     *
+     * @param id notification identifier assigned by persistence
+     * @param organizationId organization that owns the notification
+     * @param incidentId source incident identifier
+     * @param channel delivery channel
+     * @param recipient optional recipient
+     * @param message notification message
+     * @param status delivery status
+     * @param createdAt creation timestamp assigned by persistence
+     * @param deliveredAt delivery timestamp
+     * @param failureReason optional failure reason
+     */
+    public Notification(
+            Long id,
+            Long organizationId,
+            Long incidentId,
+            NotificationChannel channel,
+            String recipient,
+            String message,
+            NotificationStatus status,
+            Instant createdAt,
+            Instant deliveredAt,
+            String failureReason
+    ) {
+        this.id = id;
+        this.organizationId = organizationId;
+        this.incidentId = incidentId;
+        this.channel = channel;
+        this.recipient = recipient;
+        this.message = message;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.deliveredAt = deliveredAt;
+        this.failureReason = failureReason;
     }
 
     /**

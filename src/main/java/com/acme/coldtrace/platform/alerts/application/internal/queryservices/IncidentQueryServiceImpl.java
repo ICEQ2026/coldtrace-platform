@@ -5,7 +5,7 @@ import com.acme.coldtrace.platform.alerts.application.queryservices.IncidentQuer
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentsByOrganizationIdQuery;
-import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.IncidentRepository;
+import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
