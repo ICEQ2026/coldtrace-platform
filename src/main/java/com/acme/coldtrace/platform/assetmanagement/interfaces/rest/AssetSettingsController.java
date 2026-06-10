@@ -110,13 +110,10 @@ public class AssetSettingsController {
         var settings = assetSettingsQueryService.handle(
                 new GetEffectiveAssetSettingsByAssetIdQuery(organizationId, assetId)
         );
-        if (settings.isEmpty()) {
-            return ResponseEntityFromAssetSettingsQueryResultAssembler.notFound(
-                    messageSource,
-                    "asset-management.asset-settings.error.asset-settings-not-found"
-            );
-        }
-        return ResponseEntityFromAssetSettingsQueryResultAssembler.toResponseEntityFromAssetSettings(settings.get());
+        return ResponseEntityFromAssetSettingsQueryResultAssembler.toResponseEntityFromAssetSettingsResult(
+                settings,
+                messageSource
+        );
     }
 
     /**
