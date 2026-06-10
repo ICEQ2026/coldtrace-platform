@@ -1,16 +1,8 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.RoleName;
 import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.Permission;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Table;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -24,21 +16,10 @@ import java.util.List;
  * @since 1.0
  */
 @Getter
-@Entity
-@Table(name = "roles")
-public class Role {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class Role extends AbstractDomainAggregateRoot<Role> {
     private Long id;
-
-    @Column(nullable = false, unique = true)
-    private String name;
-
-    @Column(nullable = false)
+    private RoleName name;
     private String label;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"))
     private List<Permission> permissions = new ArrayList<>();
 
     protected Role() {
@@ -52,8 +33,41 @@ public class Role {
      * @param permissions permissions assigned to the role
      */
     public Role(String name, String label, List<Permission> permissions) {
-        this.name = name.trim();
+        this.name = new RoleName(name);
         this.label = label.trim();
         this.permissions = new ArrayList<>(permissions);
+    }
+
+    /**
+     * Rebuilds a role aggregate from persistence state.
+     *
+     * @param id role identifier assigned by persistence
+     * @param name stable role name value object
+     * @param label display label
+     * @param permissions permissions assigned to the role
+     */
+    public Role(Long id, RoleName name, String label, List<Permission> permissions) {
+        this.id = id;
+        this.name = name;
+        this.label = label;
+        this.permissions = new ArrayList<>(permissions);
+    }
+
+    /**
+     * Returns the role name as a string for application and REST consumers.
+     *
+     * @return stable role name
+     */
+    public String getName() {
+        return this.name.value();
+    }
+
+    /**
+     * Returns the strongly typed role name value object.
+     *
+     * @return role name value object
+     */
+    public RoleName getNameValue() {
+        return this.name;
     }
 }

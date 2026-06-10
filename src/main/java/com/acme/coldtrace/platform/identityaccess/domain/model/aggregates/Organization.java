@@ -1,12 +1,8 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.aggregates;
 
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateOrganizationCommand;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.EmailAddress;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 /**
@@ -16,23 +12,12 @@ import lombok.Getter;
  * @since 1.0
  */
 @Getter
-@Entity
-@Table(name = "organizations")
-public class Organization {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class Organization extends AbstractDomainAggregateRoot<Organization> {
     private Long id;
-
-    @Column(nullable = false)
     private String legalName;
-
-    @Column(nullable = false)
     private String commercialName;
-
     private String taxId;
-
-    @Column(nullable = false)
-    private String contactEmail;
+    private EmailAddress contactEmail;
 
     protected Organization() {
     }
@@ -47,6 +32,41 @@ public class Organization {
         this.legalName = command.legalName();
         this.commercialName = command.commercialName();
         this.taxId = command.taxId();
-        this.contactEmail = command.contactEmail();
+        this.contactEmail = new EmailAddress(command.contactEmail());
+    }
+
+    /**
+     * Rebuilds an organization aggregate from persistence state.
+     *
+     * @param id organization identifier assigned by persistence
+     * @param legalName legal organization name
+     * @param commercialName commercial organization name
+     * @param taxId optional tax identifier
+     * @param contactEmail organization contact email value object
+     */
+    public Organization(Long id, String legalName, String commercialName, String taxId, EmailAddress contactEmail) {
+        this.id = id;
+        this.legalName = legalName;
+        this.commercialName = commercialName;
+        this.taxId = taxId;
+        this.contactEmail = contactEmail;
+    }
+
+    /**
+     * Returns the contact email as a string for application and REST consumers.
+     *
+     * @return organization contact email
+     */
+    public String getContactEmail() {
+        return this.contactEmail.value();
+    }
+
+    /**
+     * Returns the strongly typed contact email value object.
+     *
+     * @return contact email value object
+     */
+    public EmailAddress getContactEmailValue() {
+        return this.contactEmail;
     }
 }

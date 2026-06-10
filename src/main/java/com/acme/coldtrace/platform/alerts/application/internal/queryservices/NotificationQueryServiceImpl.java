@@ -7,7 +7,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsB
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsByOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.NotificationRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

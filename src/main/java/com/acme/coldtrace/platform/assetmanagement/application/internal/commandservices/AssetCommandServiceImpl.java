@@ -7,7 +7,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateA
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;

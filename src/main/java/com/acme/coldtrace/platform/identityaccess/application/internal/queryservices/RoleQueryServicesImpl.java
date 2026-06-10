@@ -3,7 +3,7 @@ package com.acme.coldtrace.platform.identityaccess.application.internal.queryser
 import com.acme.coldtrace.platform.identityaccess.application.queryservices.RoleQueryService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Role;
 import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetAllRolesQuery;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.RoleRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.RoleRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

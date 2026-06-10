@@ -6,9 +6,9 @@ import com.acme.coldtrace.platform.identityaccess.application.commandservices.Or
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Organization;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateOrganizationSignUpCommand;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.RoleRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.UserRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.RoleRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.UserRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,15 +51,15 @@ public class OrganizationSignUpCommandServiceImpl implements OrganizationSignUpC
     public Result<OrganizationSignUpCommandResult, OrganizationSignUpCommandFailure> handle(
             CreateOrganizationSignUpCommand command
     ) {
-        if (organizationRepository.existsByContactEmailIgnoreCase(command.contactEmail())) {
+        if (organizationRepository.existsByContactEmail(command.contactEmail())) {
             log.warn("Duplicate organization contact email detected during sign-up: {}", command.contactEmail());
             return Result.failure(new OrganizationSignUpCommandFailure.DuplicateOrganizationContactEmail());
         }
-        if (command.taxId() != null && organizationRepository.existsByTaxIdIgnoreCase(command.taxId())) {
+        if (command.taxId() != null && organizationRepository.existsByTaxId(command.taxId())) {
             log.warn("Duplicate organization tax id detected during sign-up: {}", command.taxId());
             return Result.failure(new OrganizationSignUpCommandFailure.DuplicateOrganizationTaxId());
         }
-        if (userRepository.existsByEmailIgnoreCase(command.email())) {
+        if (userRepository.existsByEmail(command.email())) {
             log.warn("Duplicate user email detected during sign-up: {}", command.email());
             return Result.failure(new OrganizationSignUpCommandFailure.DuplicateUserEmail());
         }

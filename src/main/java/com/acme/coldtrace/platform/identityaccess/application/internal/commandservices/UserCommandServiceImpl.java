@@ -4,9 +4,9 @@ import com.acme.coldtrace.platform.identityaccess.application.commandservices.Us
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.UserCommandService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateUserCommand;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.RoleRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.UserRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.RoleRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.UserRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,7 +48,7 @@ public class UserCommandServiceImpl implements UserCommandService {
     @Override
     @Transactional
     public Result<User, UserCommandFailure> handle(CreateUserCommand command) {
-        if (userRepository.existsByEmailIgnoreCase(command.email())) {
+        if (userRepository.existsByEmail(command.email())) {
             log.warn("Duplicate user email detected: {}", command.email());
             return Result.failure(new UserCommandFailure.DuplicateEmail());
         }
@@ -67,7 +67,7 @@ public class UserCommandServiceImpl implements UserCommandService {
                     user.getId(), user.getEmail(), user.getOrganizationId(), user.getRoleId());
             return Result.success(user);
         } catch (DataIntegrityViolationException exception) {
-            if (userRepository.existsByEmailIgnoreCase(command.email())) {
+            if (userRepository.existsByEmail(command.email())) {
                 log.warn("Duplicate user email detected by constraint: {}", command.email());
                 return Result.failure(new UserCommandFailure.DuplicateEmail());
             }
