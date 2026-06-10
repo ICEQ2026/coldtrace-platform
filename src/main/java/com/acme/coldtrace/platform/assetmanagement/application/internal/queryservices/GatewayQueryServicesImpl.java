@@ -4,7 +4,7 @@ import com.acme.coldtrace.platform.assetmanagement.application.queryservices.Gat
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Gateway;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetGatewayByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetGatewaysByOrganizationIdQuery;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.GatewayRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -5,8 +5,8 @@ import com.acme.coldtrace.platform.assetmanagement.application.commandservices.G
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Gateway;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateGatewayCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateGatewayCommand;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.GatewayRepository;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +59,7 @@ public class GatewayCommandServiceImpl implements GatewayCommandService {
                     command.organizationId(), command.locationId());
             return Result.failure(new GatewayCommandFailure.LocationNotFound());
         }
-        if (gatewayRepository.existsByOrganizationIdAndUuidIgnoreCase(command.organizationId(), command.uuid())) {
+        if (gatewayRepository.existsByOrganizationIdAndUuid(command.organizationId(), command.uuid())) {
             log.warn("Duplicate gateway uuid detected: organizationId={}, uuid={}",
                     command.organizationId(), command.uuid());
             return Result.failure(new GatewayCommandFailure.DuplicateUuid());
@@ -104,7 +104,7 @@ public class GatewayCommandServiceImpl implements GatewayCommandService {
                     command.organizationId(), command.gatewayId());
             return Result.failure(new GatewayCommandFailure.GatewayNotFound());
         }
-        if (gatewayRepository.existsByOrganizationIdAndUuidIgnoreCaseAndIdNot(
+        if (gatewayRepository.existsByOrganizationIdAndUuidAndIdNot(
                 command.organizationId(), command.uuid(), command.gatewayId())) {
             log.warn("Duplicate gateway uuid detected for update: organizationId={}, gatewayId={}, uuid={}",
                     command.organizationId(), command.gatewayId(), command.uuid());
