@@ -31,11 +31,11 @@ public abstract class AuditableAbstractPersistenceEntity {
     private Long id;
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, columnDefinition = "datetime(6) default current_timestamp(6)")
     private Instant createdAt;
 
     @LastModifiedDate
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "datetime(6) default current_timestamp(6) on update current_timestamp(6)")
     private Instant updatedAt;
 
     /**
