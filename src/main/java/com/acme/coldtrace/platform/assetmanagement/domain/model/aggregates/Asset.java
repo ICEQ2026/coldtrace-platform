@@ -2,21 +2,9 @@ package com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates;
 
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects.AssetUuid;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.AbstractAggregateRoot;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.Instant;
 
 /**
  * Asset aggregate for the asset management bounded context.
@@ -34,50 +22,21 @@ import java.time.Instant;
  * @since 1.0
  */
 @Getter
-@Entity
-@EntityListeners(AuditingEntityListener.class)
-@Table(name = "assets", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"organization_id", "uuid"}, name = Asset.ORGANIZATION_ID_UUID_UNIQUE_CONSTRAINT)
-})
-public class Asset extends AbstractAggregateRoot<Asset> {
-    /** Unique constraint name shared with the persistence layer. */
+public class Asset extends AbstractDomainAggregateRoot<Asset> {
+    /**
+     * Unique constraint name shared with the infrastructure persistence layer.
+     */
     public static final String ORGANIZATION_ID_UUID_UNIQUE_CONSTRAINT = "uk_asset_organization_id_uuid";
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private Long organizationId;
-
-    @Column(nullable = false)
     private Long locationId;
-
-    @Column(nullable = false)
-    private String uuid;
-
-    @Column(nullable = false)
+    private AssetUuid uuid;
     private String type;
-
-    @Column(nullable = false)
     private String name;
-
-    @Column(nullable = false)
     private Double capacity;
-
-    @Column
     private String description;
-
-    @Column(nullable = false)
     private String status;
-
-    @Column(nullable = false, updatable = false)
-    @CreatedDate
-    private Instant createdAt;
-
-    @Column(nullable = false)
-    @LastModifiedDate
-    private Instant updatedAt;
 
     protected Asset() {
     }
@@ -91,12 +50,52 @@ public class Asset extends AbstractAggregateRoot<Asset> {
     public Asset(CreateAssetCommand command) {
         this.organizationId = command.organizationId();
         this.locationId = command.locationId();
-        this.uuid = command.uuid();
+        this.uuid = new AssetUuid(command.uuid());
         this.type = command.type();
         this.name = command.name();
         this.capacity = command.capacity();
         this.description = command.description();
         this.status = command.status();
+    }
+
+    /**
+     * Rebuilds an asset aggregate from persisted state.
+     * <p>
+     * This constructor is used by repository adapters when translating an
+     * infrastructure persistence entity into the domain model. It keeps the
+     * aggregate free from JPA while still preserving identity for application
+     * services and REST assemblers.
+     *
+     * @param id asset identifier assigned by persistence
+     * @param organizationId organization that owns the asset
+     * @param locationId organization location where the asset is placed
+     * @param uuid business identifier unique inside the organization
+     * @param type asset type selected by the business workflow
+     * @param name human-readable asset name
+     * @param capacity storage or transport capacity represented by the asset
+     * @param description optional operational notes
+     * @param status current operational status
+     */
+    public Asset(
+            Long id,
+            Long organizationId,
+            Long locationId,
+            AssetUuid uuid,
+            String type,
+            String name,
+            Double capacity,
+            String description,
+            String status
+    ) {
+        this.id = id;
+        this.organizationId = organizationId;
+        this.locationId = locationId;
+        this.uuid = uuid;
+        this.type = type;
+        this.name = name;
+        this.capacity = capacity;
+        this.description = description;
+        this.status = status;
     }
 
     /**
@@ -112,11 +111,29 @@ public class Asset extends AbstractAggregateRoot<Asset> {
      */
     public void update(UpdateAssetCommand command) {
         this.locationId = command.locationId();
-        this.uuid = command.uuid();
+        this.uuid = new AssetUuid(command.uuid());
         this.type = command.type();
         this.name = command.name();
         this.capacity = command.capacity();
         this.description = command.description();
         this.status = command.status();
+    }
+
+    /**
+     * Returns the asset uuid as a string for application and REST consumers.
+     *
+     * @return string representation of the asset uuid
+     */
+    public String getUuid() {
+        return this.uuid.value();
+    }
+
+    /**
+     * Returns the strongly typed asset uuid value object.
+     *
+     * @return asset uuid value object
+     */
+    public AssetUuid getUuidValue() {
+        return this.uuid;
     }
 }

@@ -4,7 +4,7 @@ import com.acme.coldtrace.platform.assetmanagement.application.queryservices.Ass
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetAssetByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetAssetsByOrganizationIdQuery;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.AssetRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

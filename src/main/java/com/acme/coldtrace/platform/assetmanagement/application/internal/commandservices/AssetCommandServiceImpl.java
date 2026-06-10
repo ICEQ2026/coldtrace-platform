@@ -5,7 +5,7 @@ import com.acme.coldtrace.platform.assetmanagement.application.commandservices.A
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.AssetRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.LocationRepository;
 import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
@@ -64,7 +64,7 @@ public class AssetCommandServiceImpl implements AssetCommandService {
                     command.organizationId(), command.locationId());
             return Result.failure(new AssetCommandFailure.LocationNotFound());
         }
-        if (assetRepository.existsByOrganizationIdAndUuidIgnoreCase(command.organizationId(), command.uuid())) {
+        if (assetRepository.existsByOrganizationIdAndUuid(command.organizationId(), command.uuid())) {
             log.warn("Duplicate asset uuid detected: organizationId={}, uuid={}",
                     command.organizationId(), command.uuid());
             return Result.failure(new AssetCommandFailure.DuplicateUuid());
@@ -109,7 +109,7 @@ public class AssetCommandServiceImpl implements AssetCommandService {
                     command.organizationId(), command.assetId());
             return Result.failure(new AssetCommandFailure.AssetNotFound());
         }
-        if (assetRepository.existsByOrganizationIdAndUuidIgnoreCaseAndIdNot(
+        if (assetRepository.existsByOrganizationIdAndUuidAndIdNot(
                 command.organizationId(), command.uuid(), command.assetId())) {
             log.warn("Duplicate asset uuid detected for update: organizationId={}, assetId={}, uuid={}",
                     command.organizationId(), command.assetId(), command.uuid());
