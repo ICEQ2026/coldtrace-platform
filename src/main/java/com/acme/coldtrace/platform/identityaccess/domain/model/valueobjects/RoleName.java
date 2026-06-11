@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects;
 
+import com.acme.coldtrace.platform.identityaccess.domain.exceptions.InvalidIdentityAccessValueException;
+
 /**
  * Value object for stable role identifiers.
  * <p>
@@ -15,11 +17,11 @@ public record RoleName(String value) {
      * Creates a normalized role name.
      *
      * @param value stable role identifier
-     * @throws IllegalArgumentException when the value is null or blank
+     * @throws InvalidIdentityAccessValueException when the value is null or blank
      */
     public RoleName {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Role name must not be null or blank");
+            throw new InvalidIdentityAccessValueException("Role name must not be null or blank");
         }
         value = value.trim();
     }

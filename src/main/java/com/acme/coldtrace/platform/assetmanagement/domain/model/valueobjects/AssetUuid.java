@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects;
 
+import com.acme.coldtrace.platform.assetmanagement.domain.exceptions.InvalidAssetManagementValueException;
+
 /**
  * Value object that represents the business uuid assigned to an asset.
  * <p>
@@ -16,11 +18,11 @@ public record AssetUuid(String value) {
      * Creates an asset uuid value object.
      *
      * @param value string representation of the asset business uuid
-     * @throws IllegalArgumentException when the value is null or blank
+     * @throws InvalidAssetManagementValueException when the value is null or blank
      */
     public AssetUuid {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Asset uuid must not be null or blank");
+            throw new InvalidAssetManagementValueException("Asset uuid must not be null or blank");
         }
         value = value.trim();
     }

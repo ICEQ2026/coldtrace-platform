@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.alerts.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.alerts.domain.exceptions.InvalidIncidentSeverityException;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.AcknowledgeIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
@@ -193,7 +194,7 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
         try {
             return IncidentSeverity.valueOf(severity);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("alerts.incident.error.severity.invalid");
+            throw new InvalidIncidentSeverityException();
         }
     }
 }

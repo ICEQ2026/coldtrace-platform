@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects;
 
+import com.acme.coldtrace.platform.assetmanagement.domain.exceptions.InvalidAssetManagementValueException;
+
 /**
  * Value object for an organization-scoped location name.
  * <p>
@@ -16,11 +18,11 @@ public record LocationName(String value) {
      * Creates a normalized location name.
      *
      * @param value location name
-     * @throws IllegalArgumentException when the value is null or blank
+     * @throws InvalidAssetManagementValueException when the value is null or blank
      */
     public LocationName {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Location name must not be null or blank");
+            throw new InvalidAssetManagementValueException("Location name must not be null or blank");
         }
         value = value.trim();
     }

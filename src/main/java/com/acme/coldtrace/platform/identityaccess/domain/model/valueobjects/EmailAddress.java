@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects;
 
+import com.acme.coldtrace.platform.identityaccess.domain.exceptions.InvalidIdentityAccessValueException;
+
 import jakarta.validation.constraints.Email;
 
 /**
@@ -17,11 +19,11 @@ public record EmailAddress(@Email String value) {
      * Creates a normalized email address.
      *
      * @param value email address string
-     * @throws IllegalArgumentException when the value is null or blank
+     * @throws InvalidIdentityAccessValueException when the value is null or blank
      */
     public EmailAddress {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Email address must not be null or blank");
+            throw new InvalidIdentityAccessValueException("Email address must not be null or blank");
         }
         value = value.trim();
     }
