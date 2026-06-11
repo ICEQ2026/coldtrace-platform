@@ -7,7 +7,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsB
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsByOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.domain.repositories.NotificationRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,16 +26,16 @@ import java.util.List;
 public class NotificationQueryServiceImpl implements NotificationQueryService {
     private final NotificationRepository notificationRepository;
     private final IncidentRepository incidentRepository;
-    private final OrganizationRepository organizationRepository;
+    private final IdentityAccessContextFacade identityAccessContextFacade;
 
     public NotificationQueryServiceImpl(
             NotificationRepository notificationRepository,
             IncidentRepository incidentRepository,
-            OrganizationRepository organizationRepository
+            IdentityAccessContextFacade identityAccessContextFacade
     ) {
         this.notificationRepository = notificationRepository;
         this.incidentRepository = incidentRepository;
-        this.organizationRepository = organizationRepository;
+        this.identityAccessContextFacade = identityAccessContextFacade;
     }
 
     /**
@@ -46,7 +46,7 @@ public class NotificationQueryServiceImpl implements NotificationQueryService {
      */
     @Override
     public Result<List<Notification>, NotificationQueryFailure> handle(GetNotificationsByOrganizationIdQuery query) {
-        if (!organizationRepository.existsById(query.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
             log.warn("Organization not found for notification query: organizationId={}", query.organizationId());
             return Result.failure(new NotificationQueryFailure.OrganizationNotFound());
         }
@@ -63,7 +63,7 @@ public class NotificationQueryServiceImpl implements NotificationQueryService {
      */
     @Override
     public Result<List<Notification>, NotificationQueryFailure> handle(GetNotificationsByIncidentIdAndOrganizationIdQuery query) {
-        if (!organizationRepository.existsById(query.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
             log.warn("Organization not found for incident notification query: organizationId={}", query.organizationId());
             return Result.failure(new NotificationQueryFailure.OrganizationNotFound());
         }

@@ -1,11 +1,11 @@
 package com.acme.coldtrace.platform.reports.application.internal.commandservices;
 
-import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
-import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
-import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
-import com.acme.coldtrace.platform.monitoring.domain.model.aggregates.SensorReading;
-import com.acme.coldtrace.platform.monitoring.domain.repositories.SensorReadingRepository;
+import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
+import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade;
+import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade.SensorReadingSnapshot;
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportCommandFailure;
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportCommandService;
 import com.acme.coldtrace.platform.reports.domain.model.aggregates.Report;
@@ -34,23 +34,23 @@ import java.util.Objects;
 @Service
 public class ReportCommandServiceImpl implements ReportCommandService {
     private final ReportRepository reportRepository;
-    private final OrganizationRepository organizationRepository;
-    private final AssetRepository assetRepository;
-    private final SensorReadingRepository sensorReadingRepository;
-    private final IncidentRepository incidentRepository;
+    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final AssetManagementContextFacade assetManagementContextFacade;
+    private final MonitoringContextFacade monitoringContextFacade;
+    private final AlertsContextFacade alertsContextFacade;
 
     public ReportCommandServiceImpl(
             ReportRepository reportRepository,
-            OrganizationRepository organizationRepository,
-            AssetRepository assetRepository,
-            SensorReadingRepository sensorReadingRepository,
-            IncidentRepository incidentRepository
+            IdentityAccessContextFacade identityAccessContextFacade,
+            AssetManagementContextFacade assetManagementContextFacade,
+            MonitoringContextFacade monitoringContextFacade,
+            AlertsContextFacade alertsContextFacade
     ) {
         this.reportRepository = reportRepository;
-        this.organizationRepository = organizationRepository;
-        this.assetRepository = assetRepository;
-        this.sensorReadingRepository = sensorReadingRepository;
-        this.incidentRepository = incidentRepository;
+        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.assetManagementContextFacade = assetManagementContextFacade;
+        this.monitoringContextFacade = monitoringContextFacade;
+        this.alertsContextFacade = alertsContextFacade;
     }
 
     /**
@@ -63,19 +63,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     @Transactional
     public Result<Report, ReportCommandFailure> handle(GenerateReportCommand command) {
-        if (!organizationRepository.existsById(command.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for report generation: organizationId={}", command.organizationId());
             return Result.failure(new ReportCommandFailure.OrganizationNotFound());
         }
 
-        var readings = sensorReadingRepository.findAllByOrganizationId(command.organizationId()).stream()
-                .filter(reading -> !reading.getRecordedAt().isBefore(command.periodStart()))
-                .filter(reading -> !reading.getRecordedAt().isAfter(command.periodEnd()))
+        var readings = monitoringContextFacade.fetchSensorReadingsByOrganizationId(command.organizationId()).stream()
+                .filter(reading -> !reading.recordedAt().isBefore(command.periodStart()))
+                .filter(reading -> !reading.recordedAt().isAfter(command.periodEnd()))
                 .toList();
-        var incidents = incidentRepository.findAllByOrganizationId(command.organizationId()).stream()
-                .filter(incident -> incident.getDetectedAt() != null)
-                .filter(incident -> !incident.getDetectedAt().isBefore(toInstant(command.periodStart())))
-                .filter(incident -> !incident.getDetectedAt().isAfter(toInstant(command.periodEnd())))
+        var incidents = alertsContextFacade.fetchIncidentsByOrganizationId(command.organizationId()).stream()
+                .filter(incident -> incident.detectedAt() != null)
+                .filter(incident -> !incident.detectedAt().isBefore(toInstant(command.periodStart())))
+                .filter(incident -> !incident.detectedAt().isAfter(toInstant(command.periodEnd())))
                 .toList();
 
         var report = new Report(
@@ -104,33 +104,33 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return dateTime.toInstant();
     }
 
-    private Integer assetCount(Long organizationId, List<SensorReading> readings) {
+    private Integer assetCount(Long organizationId, List<SensorReadingSnapshot> readings) {
         var assetIdsWithReadings = readings.stream()
-                .map(SensorReading::getAssetId)
+                .map(SensorReadingSnapshot::assetId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .count();
         if (assetIdsWithReadings > 0) {
             return Math.toIntExact(assetIdsWithReadings);
         }
-        return assetRepository.findAllByOrganizationId(organizationId).size();
+        return assetManagementContextFacade.countAssetsByOrganizationId(organizationId);
     }
 
-    private Integer outOfRangeCount(List<SensorReading> readings) {
+    private Integer outOfRangeCount(List<SensorReadingSnapshot> readings) {
         return Math.toIntExact(readings.stream()
-                .filter(reading -> Boolean.TRUE.equals(reading.getOutOfRange()))
+                .filter(reading -> Boolean.TRUE.equals(reading.outOfRange()))
                 .count());
     }
 
-    private Integer openIncidentCount(List<Incident> incidents) {
+    private Integer openIncidentCount(List<IncidentSnapshot> incidents) {
         return Math.toIntExact(incidents.stream()
-                .filter(incident -> !incident.isResolved())
+                .filter(IncidentSnapshot::isOpen)
                 .count());
     }
 
-    private Double averageTemperature(List<SensorReading> readings) {
+    private Double averageTemperature(List<SensorReadingSnapshot> readings) {
         return readings.stream()
-                .map(SensorReading::getTemperature)
+                .map(SensorReadingSnapshot::temperature)
                 .filter(Objects::nonNull)
                 .mapToDouble(Double::doubleValue)
                 .average()
@@ -141,9 +141,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElse(null);
     }
 
-    private Double averageHumidity(List<SensorReading> readings) {
+    private Double averageHumidity(List<SensorReadingSnapshot> readings) {
         return readings.stream()
-                .map(SensorReading::getHumidity)
+                .map(SensorReadingSnapshot::humidity)
                 .filter(Objects::nonNull)
                 .mapToDouble(Double::doubleValue)
                 .average()
@@ -154,12 +154,12 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElse(null);
     }
 
-    private Double compliancePercentage(List<SensorReading> readings) {
+    private Double compliancePercentage(List<SensorReadingSnapshot> readings) {
         if (readings.isEmpty()) {
             return null;
         }
         var inRange = readings.stream()
-                .filter(reading -> !Boolean.TRUE.equals(reading.getOutOfRange()))
+                .filter(reading -> !Boolean.TRUE.equals(reading.outOfRange()))
                 .count();
         return Math.round((inRange * 1000.0 / readings.size())) / 10.0;
     }

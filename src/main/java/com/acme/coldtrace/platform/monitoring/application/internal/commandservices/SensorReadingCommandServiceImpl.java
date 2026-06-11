@@ -1,14 +1,11 @@
 package com.acme.coldtrace.platform.monitoring.application.internal.commandservices;
 
-import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset;
-import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.AssetSettings;
-import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Gateway;
-import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.IoTDevice;
-import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
-import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetSettingsRepository;
-import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
-import com.acme.coldtrace.platform.assetmanagement.domain.repositories.IoTDeviceRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSettingsSnapshot;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSnapshot;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.GatewaySnapshot;
+import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.IoTDeviceSnapshot;
+import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
 import com.acme.coldtrace.platform.monitoring.application.commandservices.SensorReadingCommandFailure;
 import com.acme.coldtrace.platform.monitoring.application.commandservices.SensorReadingCommandService;
 import com.acme.coldtrace.platform.monitoring.domain.model.aggregates.SensorReading;
@@ -44,27 +41,18 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     private static final int LOW_SIGNAL_THRESHOLD = 35;
 
     private final SensorReadingRepository sensorReadingRepository;
-    private final OrganizationRepository organizationRepository;
-    private final AssetRepository assetRepository;
-    private final IoTDeviceRepository iotDeviceRepository;
-    private final GatewayRepository gatewayRepository;
-    private final AssetSettingsRepository assetSettingsRepository;
+    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final AssetManagementContextFacade assetManagementContextFacade;
     private final Random random = new Random();
 
     public SensorReadingCommandServiceImpl(
             SensorReadingRepository sensorReadingRepository,
-            OrganizationRepository organizationRepository,
-            AssetRepository assetRepository,
-            IoTDeviceRepository iotDeviceRepository,
-            GatewayRepository gatewayRepository,
-            AssetSettingsRepository assetSettingsRepository
+            IdentityAccessContextFacade identityAccessContextFacade,
+            AssetManagementContextFacade assetManagementContextFacade
     ) {
         this.sensorReadingRepository = sensorReadingRepository;
-        this.organizationRepository = organizationRepository;
-        this.assetRepository = assetRepository;
-        this.iotDeviceRepository = iotDeviceRepository;
-        this.gatewayRepository = gatewayRepository;
-        this.assetSettingsRepository = assetSettingsRepository;
+        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.assetManagementContextFacade = assetManagementContextFacade;
     }
 
     /**
@@ -98,8 +86,8 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
                 command.organizationId(),
                 command.assetId(),
                 command.iotDeviceId(),
-                context.gateway().getId(),
-                context.asset().getLocationId(),
+                context.gateway().id(),
+                context.asset().locationId(),
                 command.temperature(),
                 command.humidity(),
                 outOfRange,
@@ -125,18 +113,21 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     @Override
     @Transactional
     public Result<List<SensorReading>, SensorReadingCommandFailure> handle(GenerateDemoSensorReadingsCommand command) {
-        if (!organizationRepository.existsById(command.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new SensorReadingCommandFailure.OrganizationNotFound());
         }
         if (command.assetId() != null &&
-                assetRepository.findByIdAndOrganizationId(command.assetId(), command.organizationId()).isEmpty()) {
+                assetManagementContextFacade.fetchAssetByIdAndOrganizationId(
+                        command.organizationId(),
+                        command.assetId()
+                ).isEmpty()) {
             return Result.failure(new SensorReadingCommandFailure.AssetNotFound());
         }
 
-        var candidates = iotDeviceRepository.findAllByOrganizationId(command.organizationId()).stream()
-                .filter(device -> device.getAssetId() != null)
-                .filter(device -> command.assetId() == null || command.assetId().equals(device.getAssetId()))
-                .filter(device -> !OFFLINE_STATUS.equalsIgnoreCase(device.getStatus()))
+        var candidates = assetManagementContextFacade
+                .fetchAssignedIoTDevices(command.organizationId(), command.assetId())
+                .stream()
+                .filter(device -> !OFFLINE_STATUS.equalsIgnoreCase(device.status()))
                 .toList();
         var generated = new ArrayList<SensorReading>();
         for (var index = 0; index < command.count(); index++) {
@@ -149,24 +140,24 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
         return Result.success(generated);
     }
 
-    private Optional<SensorReading> generateOne(Long organizationId, List<IoTDevice> candidates, int offsetMinutes) {
+    private Optional<SensorReading> generateOne(Long organizationId, List<IoTDeviceSnapshot> candidates, int offsetMinutes) {
         if (candidates.isEmpty()) {
             return Optional.empty();
         }
         var start = random.nextInt(candidates.size());
         for (int attempt = 0; attempt < candidates.size(); attempt++) {
             var device = candidates.get((start + attempt) % candidates.size());
-            var context = resolveContext(organizationId, device.getAssetId(), device.getId());
+            var context = resolveContext(organizationId, device.assetId(), device.id());
             if (context.isFailure()) {
                 continue;
             }
             var current = context.success().orElseThrow();
-            var parameters = current.device().getMeasurementParameters();
+            var parameters = current.device().measurementParameters();
             var temperature = parameters.contains("temperature")
-                    ? randomTemperature(current.settings().getMinimumTemperature(), current.settings().getMaximumTemperature())
+                    ? randomTemperature(current.settings().minimumTemperature(), current.settings().maximumTemperature())
                     : null;
             var humidity = parameters.contains("humidity")
-                    ? randomHumidity(current.settings().getMinimumHumidity(), current.settings().getMaximumHumidity())
+                    ? randomHumidity(current.settings().minimumHumidity(), current.settings().maximumHumidity())
                     : null;
             var motionDetected = parameters.contains("motion") ? random.nextDouble() < 0.18 : null;
             var imageCaptured = parameters.contains("image") ? random.nextDouble() < 0.35 : null;
@@ -175,10 +166,10 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
             var outOfRange = evaluateOutOfRange(current.settings(), temperature, humidity, batteryLevel, signalStrength);
             var saved = sensorReadingRepository.save(new SensorReading(
                     organizationId,
-                    current.asset().getId(),
-                    current.device().getId(),
-                    current.gateway().getId(),
-                    current.asset().getLocationId(),
+                    current.asset().id(),
+                    current.device().id(),
+                    current.gateway().id(),
+                    current.asset().locationId(),
                     temperature,
                     humidity,
                     outOfRange,
@@ -198,35 +189,37 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
             Long assetId,
             Long iotDeviceId
     ) {
-        if (!organizationRepository.existsById(organizationId)) {
+        if (!identityAccessContextFacade.organizationExists(organizationId)) {
             return Result.failure(new SensorReadingCommandFailure.OrganizationNotFound());
         }
-        var asset = assetRepository.findByIdAndOrganizationId(assetId, organizationId);
+        var asset = assetManagementContextFacade.fetchAssetByIdAndOrganizationId(organizationId, assetId);
         if (asset.isEmpty()) {
             return Result.failure(new SensorReadingCommandFailure.AssetNotFound());
         }
-        var device = iotDeviceRepository.findByIdAndOrganizationId(iotDeviceId, organizationId);
+        var device = assetManagementContextFacade.fetchIoTDeviceByIdAndOrganizationId(organizationId, iotDeviceId);
         if (device.isEmpty()) {
             return Result.failure(new SensorReadingCommandFailure.IoTDeviceNotFound());
         }
-        if (!assetId.equals(device.get().getAssetId())) {
+        if (!assetId.equals(device.get().assetId())) {
             return Result.failure(new SensorReadingCommandFailure.DeviceNotAssignedToAsset());
         }
-        if (OFFLINE_STATUS.equalsIgnoreCase(device.get().getStatus())) {
+        if (OFFLINE_STATUS.equalsIgnoreCase(device.get().status())) {
             return Result.failure(new SensorReadingCommandFailure.DeviceOffline());
         }
-        var gateway = gatewayRepository.findByIdAndOrganizationId(device.get().getGatewayId(), organizationId);
+        var gateway = assetManagementContextFacade.fetchGatewayByIdAndOrganizationId(
+                organizationId,
+                device.get().gatewayId()
+        );
         if (gateway.isEmpty()) {
             return Result.failure(new SensorReadingCommandFailure.GatewayNotFound());
         }
-        if (OFFLINE_STATUS.equalsIgnoreCase(gateway.get().getStatus())) {
+        if (OFFLINE_STATUS.equalsIgnoreCase(gateway.get().status())) {
             return Result.failure(new SensorReadingCommandFailure.GatewayOffline());
         }
-        if (!asset.get().getLocationId().equals(gateway.get().getLocationId())) {
+        if (!asset.get().locationId().equals(gateway.get().locationId())) {
             return Result.failure(new SensorReadingCommandFailure.IncompatibleLocation());
         }
-        var settings = assetSettingsRepository.findByOrganizationIdAndAssetId(organizationId, assetId)
-                .or(() -> assetSettingsRepository.findDefaultByOrganizationId(organizationId));
+        var settings = assetManagementContextFacade.fetchEffectiveAssetSettingsByAssetId(organizationId, assetId);
         if (settings.isEmpty()) {
             return Result.failure(new SensorReadingCommandFailure.AssetSettingsNotFound());
         }
@@ -234,7 +227,7 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     }
 
     private boolean supportsRequestedMeasurements(
-            IoTDevice device,
+            IoTDeviceSnapshot device,
             Double temperature,
             Double humidity,
             Boolean motionDetected,
@@ -242,7 +235,7 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
             Integer batteryLevel,
             Integer signalStrength
     ) {
-        var parameters = device.getMeasurementParameters();
+        var parameters = device.measurementParameters();
         return (temperature == null || parameters.contains("temperature")) &&
                 (humidity == null || parameters.contains("humidity")) &&
                 (motionDetected == null || parameters.contains("motion")) &&
@@ -252,16 +245,16 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     }
 
     private boolean evaluateOutOfRange(
-            AssetSettings settings,
+            AssetSettingsSnapshot settings,
             Double temperature,
             Double humidity,
             Integer batteryLevel,
             Integer signalStrength
     ) {
         var temperatureOutOfRange = temperature != null &&
-                (temperature < settings.getMinimumTemperature() || temperature > settings.getMaximumTemperature());
+                (temperature < settings.minimumTemperature() || temperature > settings.maximumTemperature());
         var humidityOutOfRange = humidity != null &&
-                (humidity < settings.getMinimumHumidity() || humidity > settings.getMaximumHumidity());
+                (humidity < settings.minimumHumidity() || humidity > settings.maximumHumidity());
         var batteryOutOfRange = batteryLevel != null && batteryLevel < LOW_BATTERY_THRESHOLD;
         var signalOutOfRange = signalStrength != null && signalStrength < LOW_SIGNAL_THRESHOLD;
         return temperatureOutOfRange || humidityOutOfRange || batteryOutOfRange || signalOutOfRange;
@@ -302,6 +295,11 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
         return Math.round(value * 10.0) / 10.0;
     }
 
-    private record ReadingContext(Asset asset, IoTDevice device, Gateway gateway, AssetSettings settings) {
+    private record ReadingContext(
+            AssetSnapshot asset,
+            IoTDeviceSnapshot device,
+            GatewaySnapshot gateway,
+            AssetSettingsSnapshot settings
+    ) {
     }
 }

@@ -1,6 +1,6 @@
 package com.acme.coldtrace.platform.reports.application.internal.queryservices;
 
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
 import com.acme.coldtrace.platform.reports.application.queryservices.ReportQueryFailure;
 import com.acme.coldtrace.platform.reports.application.queryservices.ReportQueryService;
 import com.acme.coldtrace.platform.reports.domain.model.aggregates.Report;
@@ -24,14 +24,14 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ReportQueryServiceImpl implements ReportQueryService {
     private final ReportRepository reportRepository;
-    private final OrganizationRepository organizationRepository;
+    private final IdentityAccessContextFacade identityAccessContextFacade;
 
     public ReportQueryServiceImpl(
             ReportRepository reportRepository,
-            OrganizationRepository organizationRepository
+            IdentityAccessContextFacade identityAccessContextFacade
     ) {
         this.reportRepository = reportRepository;
-        this.organizationRepository = organizationRepository;
+        this.identityAccessContextFacade = identityAccessContextFacade;
     }
 
     /**
@@ -43,7 +43,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
      */
     @Override
     public Result<List<Report>, ReportQueryFailure> handle(GetReportsByOrganizationIdQuery query) {
-        if (!organizationRepository.existsById(query.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new ReportQueryFailure.OrganizationNotFound());
         }
         return Result.success(reportRepository.findAllByOrganizationId(query.organizationId()));
@@ -58,7 +58,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
      */
     @Override
     public Result<Report, ReportQueryFailure> handle(GetReportByIdAndOrganizationIdQuery query) {
-        if (!organizationRepository.existsById(query.organizationId())) {
+        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new ReportQueryFailure.OrganizationNotFound());
         }
         var report = reportRepository.findByIdAndOrganizationId(query.reportId(), query.organizationId());
