@@ -12,6 +12,11 @@ import java.util.Optional;
 
 /**
  * JPA-backed adapter for the incident domain repository.
+ * <p>
+ * This adapter translates between alert incident aggregates and their JPA
+ * persistence representation. Newly persisted incidents publish their domain
+ * events after the database assigns the identifier required by downstream
+ * integration handlers.
  *
  * @since 1.0
  */
@@ -28,6 +33,9 @@ public class IncidentRepositoryImpl implements IncidentRepository {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Incident> findAllByOrganizationId(Long organizationId) {
         return incidentPersistenceRepository.findAllByOrganizationId(organizationId).stream()
@@ -35,17 +43,26 @@ public class IncidentRepositoryImpl implements IncidentRepository {
                 .toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<Incident> findByIdAndOrganizationId(Long id, Long organizationId) {
         return incidentPersistenceRepository.findByIdAndOrganizationId(id, organizationId)
                 .map(IncidentPersistenceAssembler::toDomainFromPersistence);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean existsByIdAndOrganizationId(Long id, Long organizationId) {
         return incidentPersistenceRepository.existsByIdAndOrganizationId(id, organizationId);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Incident save(Incident incident) {
         if (incident.getId() == null) {
