@@ -14,17 +14,11 @@ package com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources;
  */
 public record CreateOrganizationSignUpResource(
         String legalName,
-
         String commercialName,
-
         String taxId,
-
         String contactEmail,
-
         String firstName,
-
         String lastName,
-
         String email
 ) {
 }

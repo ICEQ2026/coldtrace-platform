@@ -12,13 +12,9 @@ package com.acme.coldtrace.platform.assetmanagement.interfaces.rest.resources;
  */
 public record UpdateLocationResource(
         String name,
-
         String type,
-
         String address,
-
         String description,
-
         String status
 ) {
 }

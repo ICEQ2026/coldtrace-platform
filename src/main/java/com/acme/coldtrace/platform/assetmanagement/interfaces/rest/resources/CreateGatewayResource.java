@@ -12,13 +12,9 @@ package com.acme.coldtrace.platform.assetmanagement.interfaces.rest.resources;
  */
 public record CreateGatewayResource(
         Long locationId,
-
         String uuid,
-
         String name,
-
         String network,
-
         String status
 ) {
 }
