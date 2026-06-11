@@ -4,6 +4,7 @@ import com.acme.coldtrace.platform.reports.domain.model.aggregates.Report;
 import com.acme.coldtrace.platform.reports.domain.repositories.ReportRepository;
 import com.acme.coldtrace.platform.reports.infrastructure.persistence.jpa.assemblers.ReportPersistenceAssembler;
 import com.acme.coldtrace.platform.reports.infrastructure.persistence.jpa.repositories.ReportPersistenceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,9 +18,14 @@ import java.util.Optional;
 @Repository
 public class ReportRepositoryImpl implements ReportRepository {
     private final ReportPersistenceRepository reportPersistenceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public ReportRepositoryImpl(ReportPersistenceRepository reportPersistenceRepository) {
+    public ReportRepositoryImpl(
+            ReportPersistenceRepository reportPersistenceRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.reportPersistenceRepository = reportPersistenceRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -48,6 +54,10 @@ public class ReportRepositoryImpl implements ReportRepository {
     public Report save(Report report) {
         var entity = ReportPersistenceAssembler.toPersistenceFromDomain(report);
         var savedEntity = reportPersistenceRepository.save(entity);
-        return ReportPersistenceAssembler.toDomainFromPersistence(savedEntity);
+        var savedReport = ReportPersistenceAssembler.toDomainFromPersistence(savedEntity);
+        savedReport.onGenerated();
+        savedReport.domainEvents().forEach(eventPublisher::publishEvent);
+        savedReport.clearDomainEvents();
+        return savedReport;
     }
 }

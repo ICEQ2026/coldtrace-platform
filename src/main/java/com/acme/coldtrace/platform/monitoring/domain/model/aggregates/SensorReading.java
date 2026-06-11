@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.monitoring.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.monitoring.domain.model.events.SensorReadingRecordedEvent;
 import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
@@ -120,5 +121,12 @@ public class SensorReading extends AbstractDomainAggregateRoot<SensorReading> {
         this(organizationId, assetId, iotDeviceId, gatewayId, locationId, temperature, humidity, outOfRange,
                 recordedAt, motionDetected, imageCaptured, batteryLevel, signalStrength);
         this.id = id;
+    }
+
+    /**
+     * Registers the domain event emitted after telemetry is persisted.
+     */
+    public void onRecorded() {
+        registerDomainEvent(SensorReadingRecordedEvent.from(this));
     }
 }

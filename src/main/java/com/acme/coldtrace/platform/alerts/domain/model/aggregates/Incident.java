@@ -3,6 +3,7 @@ package com.acme.coldtrace.platform.alerts.domain.model.aggregates;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.AcknowledgeIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.events.IncidentOpenedEvent;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.IncidentSeverity;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.IncidentStatus;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.NotificationStatus;
@@ -179,6 +180,13 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
     /** @return true when the incident has been resolved */
     public boolean isResolved() {
         return IncidentStatus.RESOLVED.equals(this.status);
+    }
+
+    /**
+     * Registers the domain event emitted after a new incident is persisted.
+     */
+    public void onOpened() {
+        registerDomainEvent(IncidentOpenedEvent.from(this));
     }
 
     private IncidentSeverity parseSeverity(String severity) {

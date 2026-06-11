@@ -4,6 +4,7 @@ import com.acme.coldtrace.platform.monitoring.domain.model.aggregates.SensorRead
 import com.acme.coldtrace.platform.monitoring.domain.repositories.SensorReadingRepository;
 import com.acme.coldtrace.platform.monitoring.infrastructure.persistence.jpa.assemblers.SensorReadingPersistenceAssembler;
 import com.acme.coldtrace.platform.monitoring.infrastructure.persistence.jpa.repositories.SensorReadingPersistenceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,9 +18,14 @@ import java.util.Optional;
 @Repository
 public class SensorReadingRepositoryImpl implements SensorReadingRepository {
     private final SensorReadingPersistenceRepository sensorReadingPersistenceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public SensorReadingRepositoryImpl(SensorReadingPersistenceRepository sensorReadingPersistenceRepository) {
+    public SensorReadingRepositoryImpl(
+            SensorReadingPersistenceRepository sensorReadingPersistenceRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.sensorReadingPersistenceRepository = sensorReadingPersistenceRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -48,6 +54,10 @@ public class SensorReadingRepositoryImpl implements SensorReadingRepository {
     public SensorReading save(SensorReading sensorReading) {
         var entity = SensorReadingPersistenceAssembler.toPersistenceFromDomain(sensorReading);
         var savedEntity = sensorReadingPersistenceRepository.save(entity);
-        return SensorReadingPersistenceAssembler.toDomainFromPersistence(savedEntity);
+        var savedReading = SensorReadingPersistenceAssembler.toDomainFromPersistence(savedEntity);
+        savedReading.onRecorded();
+        savedReading.domainEvents().forEach(eventPublisher::publishEvent);
+        savedReading.clearDomainEvents();
+        return savedReading;
     }
 }

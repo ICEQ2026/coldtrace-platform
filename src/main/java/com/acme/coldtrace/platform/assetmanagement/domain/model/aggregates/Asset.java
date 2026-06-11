@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates;
 
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
+import com.acme.coldtrace.platform.assetmanagement.domain.model.events.AssetCreatedEvent;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects.AssetUuid;
 import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
@@ -135,5 +136,12 @@ public class Asset extends AbstractDomainAggregateRoot<Asset> {
      */
     public AssetUuid getUuidValue() {
         return this.uuid;
+    }
+
+    /**
+     * Registers the domain event emitted after a new asset is persisted.
+     */
+    public void onCreated() {
+        registerDomainEvent(AssetCreatedEvent.from(this));
     }
 }

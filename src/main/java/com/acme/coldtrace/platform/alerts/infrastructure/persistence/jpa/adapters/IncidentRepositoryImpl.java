@@ -4,6 +4,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.assemblers.IncidentPersistenceAssembler;
 import com.acme.coldtrace.platform.alerts.infrastructure.persistence.jpa.repositories.IncidentPersistenceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,9 +18,14 @@ import java.util.Optional;
 @Repository
 public class IncidentRepositoryImpl implements IncidentRepository {
     private final IncidentPersistenceRepository incidentPersistenceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public IncidentRepositoryImpl(IncidentPersistenceRepository incidentPersistenceRepository) {
+    public IncidentRepositoryImpl(
+            IncidentPersistenceRepository incidentPersistenceRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.incidentPersistenceRepository = incidentPersistenceRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -44,7 +50,13 @@ public class IncidentRepositoryImpl implements IncidentRepository {
     public Incident save(Incident incident) {
         if (incident.getId() == null) {
             var entity = IncidentPersistenceAssembler.toPersistenceFromDomain(incident);
-            return IncidentPersistenceAssembler.toDomainFromPersistence(incidentPersistenceRepository.save(entity));
+            var savedIncident = IncidentPersistenceAssembler.toDomainFromPersistence(
+                    incidentPersistenceRepository.save(entity)
+            );
+            savedIncident.onOpened();
+            savedIncident.domainEvents().forEach(eventPublisher::publishEvent);
+            savedIncident.clearDomainEvents();
+            return savedIncident;
         }
 
         var entity = incidentPersistenceRepository.findById(incident.getId())

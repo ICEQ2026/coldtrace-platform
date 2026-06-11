@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.reports.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.reports.domain.model.events.ReportGeneratedEvent;
 import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
@@ -141,5 +142,12 @@ public class Report extends AbstractDomainAggregateRoot<Report> {
         this.averageTemperature = averageTemperature;
         this.averageHumidity = averageHumidity;
         this.compliancePercentage = compliancePercentage;
+    }
+
+    /**
+     * Registers the domain event emitted after a report is generated.
+     */
+    public void onGenerated() {
+        registerDomainEvent(ReportGeneratedEvent.from(this));
     }
 }

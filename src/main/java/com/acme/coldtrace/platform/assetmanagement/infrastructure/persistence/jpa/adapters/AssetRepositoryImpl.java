@@ -5,6 +5,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects.Ass
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.assemblers.AssetPersistenceAssembler;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.repositories.AssetPersistenceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,9 +24,14 @@ import java.util.Optional;
 @Repository
 public class AssetRepositoryImpl implements AssetRepository {
     private final AssetPersistenceRepository assetPersistenceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public AssetRepositoryImpl(AssetPersistenceRepository assetPersistenceRepository) {
+    public AssetRepositoryImpl(
+            AssetPersistenceRepository assetPersistenceRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.assetPersistenceRepository = assetPersistenceRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -55,7 +61,11 @@ public class AssetRepositoryImpl implements AssetRepository {
         if (asset.getId() == null) {
             var entity = AssetPersistenceAssembler.toPersistenceFromDomain(asset);
             var savedEntity = assetPersistenceRepository.save(entity);
-            return AssetPersistenceAssembler.toDomainFromPersistence(savedEntity);
+            var savedAsset = AssetPersistenceAssembler.toDomainFromPersistence(savedEntity);
+            savedAsset.onCreated();
+            savedAsset.domainEvents().forEach(eventPublisher::publishEvent);
+            savedAsset.clearDomainEvents();
+            return savedAsset;
         }
 
         var entity = assetPersistenceRepository.findById(asset.getId())
