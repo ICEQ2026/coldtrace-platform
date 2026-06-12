@@ -51,6 +51,12 @@ public class IncidentPersistenceEntity extends AuditableAbstractPersistenceEntit
 
     private Instant acknowledgedAt;
     private String acknowledgedBy;
+    private Instant escalatedAt;
+    private String escalatedBy;
+    private String escalationReason;
+    private Instant correctiveActionRegisteredAt;
+    private String correctiveActionRegisteredBy;
+    private String correctiveAction;
     private Instant resolvedAt;
     private String resolvedBy;
     private String resolutionNotes;

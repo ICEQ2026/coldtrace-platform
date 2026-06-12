@@ -3,6 +3,8 @@ package com.acme.coldtrace.platform.alerts.application.commandservices;
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.AcknowledgeIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.EscalateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.RegisterIncidentCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 
@@ -27,6 +29,22 @@ public interface IncidentCommandService {
      * @return success with acknowledged incident or failure with command error
      */
     Result<Incident, IncidentCommandFailure> handle(AcknowledgeIncidentCommand command);
+
+    /**
+     * Handles incident escalation.
+     *
+     * @param command escalation command
+     * @return success with escalated incident or failure with command error
+     */
+    Result<Incident, IncidentCommandFailure> handle(EscalateIncidentCommand command);
+
+    /**
+     * Handles corrective action registration.
+     *
+     * @param command corrective action command
+     * @return success with updated incident or failure with command error
+     */
+    Result<Incident, IncidentCommandFailure> handle(RegisterIncidentCorrectiveActionCommand command);
 
     /**
      * Handles incident resolution.
