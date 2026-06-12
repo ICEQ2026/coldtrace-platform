@@ -9,6 +9,7 @@ public sealed interface TechnicalServiceRequestCommandFailure
         permits TechnicalServiceRequestCommandFailure.OrganizationNotFound,
         TechnicalServiceRequestCommandFailure.AssetNotFound,
         TechnicalServiceRequestCommandFailure.IncidentNotFound,
+        TechnicalServiceRequestCommandFailure.InconsistentIncidentReference,
         TechnicalServiceRequestCommandFailure.RequestNotFound,
         TechnicalServiceRequestCommandFailure.InvalidStatus,
         TechnicalServiceRequestCommandFailure.InvalidTransition,
@@ -39,6 +40,13 @@ public sealed interface TechnicalServiceRequestCommandFailure
     record IncidentNotFound() implements TechnicalServiceRequestCommandFailure {
         public String messageKey() {
             return "maintenance-management.technical-service-request.error.incident-not-found";
+        }
+    }
+
+    /** Incident does not reference the requested asset failure. */
+    record InconsistentIncidentReference() implements TechnicalServiceRequestCommandFailure {
+        public String messageKey() {
+            return "maintenance-management.technical-service-request.error.inconsistent-incident-reference";
         }
     }
 

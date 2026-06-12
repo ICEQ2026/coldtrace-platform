@@ -80,12 +80,17 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
             return Result.failure(new TechnicalServiceRequestCommandFailure.AssetNotFound());
         }
 
-        if (command.incidentId() != null &&
-                alertsContextFacade.fetchIncidentByIdAndOrganizationId(
-                        command.organizationId(),
-                        command.incidentId()
-                ).isEmpty()) {
-            return Result.failure(new TechnicalServiceRequestCommandFailure.IncidentNotFound());
+        if (command.incidentId() != null) {
+            var incident = alertsContextFacade.fetchIncidentByIdAndOrganizationId(
+                    command.organizationId(),
+                    command.incidentId()
+            );
+            if (incident.isEmpty()) {
+                return Result.failure(new TechnicalServiceRequestCommandFailure.IncidentNotFound());
+            }
+            if (incident.get().assetId() == null || !command.assetId().equals(incident.get().assetId())) {
+                return Result.failure(new TechnicalServiceRequestCommandFailure.InconsistentIncidentReference());
+            }
         }
 
         var request = technicalServiceRequestRepository.save(new TechnicalServiceRequest(command, asset.orElseThrow()));
