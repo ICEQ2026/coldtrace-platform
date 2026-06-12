@@ -14,9 +14,18 @@ import static org.springframework.http.HttpStatus.CREATED;
 /**
  * Interface layer translator converting organization sign-up command results to HTTP responses.
  *
+ * <p>The assembler keeps the controller focused on request orchestration while
+ * centralizing response construction for the onboarding use case. Success maps
+ * to the created organization/user representation, while failures are converted
+ * to localized {@link ProblemDetail} payloads with the status expected by the
+ * REST contract.</p>
+ *
  * @since 1.0
  */
-public class ResponseEntityFromOrganizationSignUpCommandResultAssembler {
+public final class ResponseEntityFromOrganizationSignUpCommandResultAssembler {
+    private ResponseEntityFromOrganizationSignUpCommandResultAssembler() {
+    }
+
     /**
      * Converts an organization sign-up command result into an HTTP response.
      *
@@ -33,14 +42,26 @@ public class ResponseEntityFromOrganizationSignUpCommandResultAssembler {
                         OrganizationSignUpResourceFromResultAssembler.toResourceFromResult(signUp),
                         CREATED
                 ),
-                failure -> {
-                    var status = statusFromFailure(failure);
-                    return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
-                            status,
-                            localizeMessage(messageSource, failure)
-                    ));
-                }
+                failure -> toFailureResponse(failure, messageSource)
         );
+    }
+
+    /**
+     * Converts an organization sign-up failure into a localized problem detail response.
+     *
+     * @param failure sign-up command failure
+     * @param messageSource message source for i18n
+     * @return HTTP response describing the failure
+     */
+    private static ResponseEntity<ProblemDetail> toFailureResponse(
+            OrganizationSignUpCommandFailure failure,
+            MessageSource messageSource
+    ) {
+        var status = statusFromFailure(failure);
+        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+                status,
+                localizeMessage(messageSource, failure)
+        ));
     }
 
     /**
