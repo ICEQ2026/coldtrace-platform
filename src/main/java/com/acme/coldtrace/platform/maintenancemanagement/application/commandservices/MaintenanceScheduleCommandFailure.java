@@ -11,6 +11,7 @@ package com.acme.coldtrace.platform.maintenancemanagement.application.commandser
 public sealed interface MaintenanceScheduleCommandFailure
         permits MaintenanceScheduleCommandFailure.OrganizationNotFound,
         MaintenanceScheduleCommandFailure.AssetNotFound,
+        MaintenanceScheduleCommandFailure.ResponsibleUserNotFound,
         MaintenanceScheduleCommandFailure.MaintenanceScheduleNotFound,
         MaintenanceScheduleCommandFailure.DuplicateActiveSchedule,
         MaintenanceScheduleCommandFailure.InvalidStatusTransition {
@@ -43,6 +44,14 @@ public sealed interface MaintenanceScheduleCommandFailure
         @Override
         public String messageKey() {
             return "maintenance-management.maintenance-schedule.error.asset-not-found";
+        }
+    }
+
+    /** Responsible user not found or not owned by the organization failure. */
+    record ResponsibleUserNotFound() implements MaintenanceScheduleCommandFailure {
+        @Override
+        public String messageKey() {
+            return "maintenance-management.maintenance-schedule.error.responsible-user-not-found";
         }
     }
 
