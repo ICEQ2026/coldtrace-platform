@@ -8,11 +8,15 @@ import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentsByOrg
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsByIncidentIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.AcknowledgeIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.CreateIncidentResource;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.EscalateIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.IncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.NotificationResource;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.RegisterIncidentCorrectiveActionResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.ResolveIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.AcknowledgeIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.CreateIncidentCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.EscalateIncidentCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.RegisterIncidentCorrectiveActionCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResolveIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromIncidentCommandResultAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromIncidentQueryResultAssembler;
@@ -31,6 +35,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -193,6 +198,96 @@ public class IncidentsController {
             @Valid @RequestBody AcknowledgeIncidentResource resource) {
         log.debug("POST /organizations/{}/incidents/{}/acknowledgements", organizationId, incidentId);
         var command = AcknowledgeIncidentCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                incidentId
+        );
+        var incident = incidentCommandService.handle(command);
+        return ResponseEntityFromIncidentCommandResultAssembler.toResponseEntityFromLifecycleResult(
+                incident,
+                messageSource
+        );
+    }
+
+    /**
+     * Escalates an incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @param resource escalation request resource
+     * @return response entity containing the escalated incident resource
+     */
+    @Operation(
+            summary = "Escalate an incident",
+            description = "Registers escalation fields for an open or acknowledged incident",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Incident escalation request",
+                    content = @Content(schema = @Schema(implementation = EscalateIncidentResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Incident escalated",
+                    content = @Content(schema = @Schema(implementation = IncidentResource.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or incident not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Invalid incident lifecycle transition",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PatchMapping("/{incidentId}/escalation")
+    public ResponseEntity<?> escalateIncident(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId,
+            @Valid @RequestBody EscalateIncidentResource resource) {
+        log.debug("PATCH /organizations/{}/incidents/{}/escalation", organizationId, incidentId);
+        var command = EscalateIncidentCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                incidentId
+        );
+        var incident = incidentCommandService.handle(command);
+        return ResponseEntityFromIncidentCommandResultAssembler.toResponseEntityFromLifecycleResult(
+                incident,
+                messageSource
+        );
+    }
+
+    /**
+     * Registers corrective action for an incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @param resource corrective action request resource
+     * @return response entity containing the updated incident resource
+     */
+    @Operation(
+            summary = "Register incident corrective action",
+            description = "Stores corrective action details for an open or acknowledged incident",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Incident corrective action request",
+                    content = @Content(schema = @Schema(implementation = RegisterIncidentCorrectiveActionResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Corrective action registered",
+                    content = @Content(schema = @Schema(implementation = IncidentResource.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or incident not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Invalid incident lifecycle transition",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PatchMapping("/{incidentId}/corrective-action")
+    public ResponseEntity<?> registerIncidentCorrectiveAction(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId,
+            @Valid @RequestBody RegisterIncidentCorrectiveActionResource resource) {
+        log.debug("PATCH /organizations/{}/incidents/{}/corrective-action", organizationId, incidentId);
+        var command = RegisterIncidentCorrectiveActionCommandFromResourceAssembler.toCommandFromResource(
                 resource,
                 organizationId,
                 incidentId

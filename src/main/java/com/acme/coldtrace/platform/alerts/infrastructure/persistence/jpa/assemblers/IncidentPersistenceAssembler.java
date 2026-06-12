@@ -28,6 +28,12 @@ public final class IncidentPersistenceAssembler {
                 entity.getDetectedAt(),
                 entity.getAcknowledgedAt(),
                 entity.getAcknowledgedBy(),
+                entity.getEscalatedAt(),
+                entity.getEscalatedBy(),
+                entity.getEscalationReason(),
+                entity.getCorrectiveActionRegisteredAt(),
+                entity.getCorrectiveActionRegisteredBy(),
+                entity.getCorrectiveAction(),
                 entity.getResolvedAt(),
                 entity.getResolvedBy(),
                 entity.getResolutionNotes(),
@@ -58,6 +64,12 @@ public final class IncidentPersistenceAssembler {
         entity.setDetectedAt(incident.getDetectedAt());
         entity.setAcknowledgedAt(incident.getAcknowledgedAt());
         entity.setAcknowledgedBy(incident.getAcknowledgedBy());
+        entity.setEscalatedAt(incident.getEscalatedAt());
+        entity.setEscalatedBy(incident.getEscalatedBy());
+        entity.setEscalationReason(incident.getEscalationReason());
+        entity.setCorrectiveActionRegisteredAt(incident.getCorrectiveActionRegisteredAt());
+        entity.setCorrectiveActionRegisteredBy(incident.getCorrectiveActionRegisteredBy());
+        entity.setCorrectiveAction(incident.getCorrectiveAction());
         entity.setResolvedAt(incident.getResolvedAt());
         entity.setResolvedBy(incident.getResolvedBy());
         entity.setResolutionNotes(incident.getResolutionNotes());

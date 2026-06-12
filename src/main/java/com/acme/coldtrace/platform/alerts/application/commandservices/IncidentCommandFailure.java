@@ -10,6 +10,7 @@ public sealed interface IncidentCommandFailure
         IncidentCommandFailure.IncidentNotFound,
         IncidentCommandFailure.AssetNotFound,
         IncidentCommandFailure.AlreadyAcknowledged,
+        IncidentCommandFailure.AlreadyEscalated,
         IncidentCommandFailure.AlreadyResolved,
         IncidentCommandFailure.InvalidLifecycleTransition {
     /**
@@ -63,6 +64,14 @@ public sealed interface IncidentCommandFailure
         @Override
         public String messageKey() {
             return "alerts.incident.error.already-acknowledged";
+        }
+    }
+
+    /** Incident has already been escalated. */
+    record AlreadyEscalated() implements IncidentCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.incident.error.already-escalated";
         }
     }
 

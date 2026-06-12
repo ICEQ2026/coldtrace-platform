@@ -3,6 +3,8 @@ package com.acme.coldtrace.platform.alerts.domain.model.aggregates;
 import com.acme.coldtrace.platform.alerts.domain.exceptions.InvalidIncidentSeverityException;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.AcknowledgeIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.EscalateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.RegisterIncidentCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.events.IncidentOpenedEvent;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.IncidentSeverity;
@@ -35,6 +37,12 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
     private Instant detectedAt;
     private Instant acknowledgedAt;
     private String acknowledgedBy;
+    private Instant escalatedAt;
+    private String escalatedBy;
+    private String escalationReason;
+    private Instant correctiveActionRegisteredAt;
+    private String correctiveActionRegisteredBy;
+    private String correctiveAction;
     private Instant resolvedAt;
     private String resolvedBy;
     private String resolutionNotes;
@@ -83,6 +91,12 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
      * @param detectedAt detection timestamp
      * @param acknowledgedAt acknowledgement timestamp
      * @param acknowledgedBy acknowledgement actor
+     * @param escalatedAt escalation timestamp
+     * @param escalatedBy escalation actor
+     * @param escalationReason escalation reason
+     * @param correctiveActionRegisteredAt corrective action registration timestamp
+     * @param correctiveActionRegisteredBy corrective action registration actor
+     * @param correctiveAction corrective action details
      * @param resolvedAt resolution timestamp
      * @param resolvedBy resolution actor
      * @param resolutionNotes resolution notes
@@ -105,6 +119,12 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
             Instant detectedAt,
             Instant acknowledgedAt,
             String acknowledgedBy,
+            Instant escalatedAt,
+            String escalatedBy,
+            String escalationReason,
+            Instant correctiveActionRegisteredAt,
+            String correctiveActionRegisteredBy,
+            String correctiveAction,
             Instant resolvedAt,
             String resolvedBy,
             String resolutionNotes,
@@ -126,6 +146,12 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
         this.detectedAt = detectedAt;
         this.acknowledgedAt = acknowledgedAt;
         this.acknowledgedBy = acknowledgedBy;
+        this.escalatedAt = escalatedAt;
+        this.escalatedBy = escalatedBy;
+        this.escalationReason = escalationReason;
+        this.correctiveActionRegisteredAt = correctiveActionRegisteredAt;
+        this.correctiveActionRegisteredBy = correctiveActionRegisteredBy;
+        this.correctiveAction = correctiveAction;
         this.resolvedAt = resolvedAt;
         this.resolvedBy = resolvedBy;
         this.resolutionNotes = resolutionNotes;
@@ -143,6 +169,28 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
         this.status = IncidentStatus.ACKNOWLEDGED;
         this.acknowledgedAt = Instant.now();
         this.acknowledgedBy = command.acknowledgedBy();
+    }
+
+    /**
+     * Escalates an open or acknowledged incident.
+     *
+     * @param command escalation command
+     */
+    public void escalate(EscalateIncidentCommand command) {
+        this.escalatedAt = Instant.now();
+        this.escalatedBy = command.escalatedBy();
+        this.escalationReason = command.escalationReason();
+    }
+
+    /**
+     * Registers the corrective action selected for an active incident.
+     *
+     * @param command corrective action command
+     */
+    public void registerCorrectiveAction(RegisterIncidentCorrectiveActionCommand command) {
+        this.correctiveActionRegisteredAt = Instant.now();
+        this.correctiveActionRegisteredBy = command.registeredBy();
+        this.correctiveAction = command.correctiveAction();
     }
 
     /**
@@ -181,6 +229,11 @@ public class Incident extends AbstractDomainAggregateRoot<Incident> {
     /** @return true when the incident has been resolved */
     public boolean isResolved() {
         return IncidentStatus.RESOLVED.equals(this.status);
+    }
+
+    /** @return true when the incident has already been escalated */
+    public boolean isEscalated() {
+        return this.escalatedAt != null;
     }
 
     /**

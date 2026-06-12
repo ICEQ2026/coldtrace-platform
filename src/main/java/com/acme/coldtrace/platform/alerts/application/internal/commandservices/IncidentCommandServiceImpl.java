@@ -6,6 +6,8 @@ import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Notification;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.AcknowledgeIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.EscalateIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.RegisterIncidentCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.domain.repositories.NotificationRepository;
@@ -116,6 +118,79 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
         log.info("Incident acknowledged: id={}, organizationId={}",
                 acknowledgedIncident.getId(), acknowledgedIncident.getOrganizationId());
         return Result.success(acknowledgedIncident);
+    }
+
+    /**
+     * Handles escalation of an active incident aggregate.
+     *
+     * @param command escalation command
+     * @return success with escalated incident or failure with command error
+     */
+    @Override
+    @Transactional
+    public Result<Incident, IncidentCommandFailure> handle(EscalateIncidentCommand command) {
+        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+            log.warn("Organization not found for incident escalation: organizationId={}", command.organizationId());
+            return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
+        }
+
+        var incident = incidentRepository.findByIdAndOrganizationId(command.incidentId(), command.organizationId());
+        if (incident.isEmpty()) {
+            log.warn("Incident not found for escalation: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.IncidentNotFound());
+        }
+        if (incident.get().isResolved()) {
+            log.warn("Resolved incident cannot be escalated: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.AlreadyResolved());
+        }
+        if (incident.get().isEscalated()) {
+            log.warn("Incident already escalated: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.AlreadyEscalated());
+        }
+
+        incident.get().escalate(command);
+        var escalatedIncident = incidentRepository.save(incident.get());
+
+        log.info("Incident escalated: id={}, organizationId={}",
+                escalatedIncident.getId(), escalatedIncident.getOrganizationId());
+        return Result.success(escalatedIncident);
+    }
+
+    /**
+     * Handles corrective action registration for an active incident aggregate.
+     *
+     * @param command corrective action command
+     * @return success with updated incident or failure with command error
+     */
+    @Override
+    @Transactional
+    public Result<Incident, IncidentCommandFailure> handle(RegisterIncidentCorrectiveActionCommand command) {
+        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+            log.warn("Organization not found for incident corrective action: organizationId={}", command.organizationId());
+            return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
+        }
+
+        var incident = incidentRepository.findByIdAndOrganizationId(command.incidentId(), command.organizationId());
+        if (incident.isEmpty()) {
+            log.warn("Incident not found for corrective action: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.IncidentNotFound());
+        }
+        if (incident.get().isResolved()) {
+            log.warn("Resolved incident cannot receive corrective action: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.AlreadyResolved());
+        }
+
+        incident.get().registerCorrectiveAction(command);
+        var updatedIncident = incidentRepository.save(incident.get());
+
+        log.info("Incident corrective action registered: id={}, organizationId={}",
+                updatedIncident.getId(), updatedIncident.getOrganizationId());
+        return Result.success(updatedIncident);
     }
 
     /**
