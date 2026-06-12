@@ -31,7 +31,6 @@ public class AlertsContextFacadeImpl implements AlertsContextFacade {
                 .toList();
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -40,6 +39,7 @@ public class AlertsContextFacadeImpl implements AlertsContextFacade {
         return incidentRepository.findByIdAndOrganizationId(incidentId, organizationId)
                 .map(this::toSnapshot);
     }
+
     private IncidentSnapshot toSnapshot(Incident incident) {
         return new IncidentSnapshot(
                 incident.getId(),
