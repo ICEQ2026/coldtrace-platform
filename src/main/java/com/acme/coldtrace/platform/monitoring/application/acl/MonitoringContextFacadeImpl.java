@@ -6,6 +6,7 @@ import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFa
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Application-layer implementation of {@link MonitoringContextFacade}.
@@ -30,11 +31,26 @@ public class MonitoringContextFacadeImpl implements MonitoringContextFacade {
                 .toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<SensorReadingSnapshot> fetchSensorReadingByIdAndOrganizationId(
+            Long organizationId,
+            Long sensorReadingId
+    ) {
+        return sensorReadingRepository.findByIdAndOrganizationId(sensorReadingId, organizationId)
+                .map(this::toSnapshot);
+    }
+
     private SensorReadingSnapshot toSnapshot(SensorReading reading) {
         return new SensorReadingSnapshot(
                 reading.getId(),
                 reading.getOrganizationId(),
                 reading.getAssetId(),
+                reading.getIotDeviceId(),
+                reading.getGatewayId(),
+                reading.getLocationId(),
                 reading.getTemperature(),
                 reading.getHumidity(),
                 reading.getOutOfRange(),

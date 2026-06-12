@@ -9,6 +9,9 @@ public sealed interface IncidentCommandFailure
         permits IncidentCommandFailure.OrganizationNotFound,
         IncidentCommandFailure.IncidentNotFound,
         IncidentCommandFailure.AssetNotFound,
+        IncidentCommandFailure.DeviceNotFound,
+        IncidentCommandFailure.ReadingNotFound,
+        IncidentCommandFailure.InconsistentReference,
         IncidentCommandFailure.AlreadyAcknowledged,
         IncidentCommandFailure.AlreadyEscalated,
         IncidentCommandFailure.AlreadyResolved,
@@ -56,6 +59,30 @@ public sealed interface IncidentCommandFailure
         @Override
         public String messageKey() {
             return "alerts.incident.error.asset-not-found";
+        }
+    }
+
+    /** Referenced IoT device was not found in the organization. */
+    record DeviceNotFound() implements IncidentCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.incident.error.device-not-found";
+        }
+    }
+
+    /** Referenced sensor reading was not found in the organization. */
+    record ReadingNotFound() implements IncidentCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.incident.error.reading-not-found";
+        }
+    }
+
+    /** Incident references point to different operational contexts. */
+    record InconsistentReference() implements IncidentCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.incident.error.inconsistent-reference";
         }
     }
 

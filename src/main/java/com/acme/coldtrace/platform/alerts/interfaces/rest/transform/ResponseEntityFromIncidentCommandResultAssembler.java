@@ -68,8 +68,13 @@ public class ResponseEntityFromIncidentCommandResultAssembler {
     private static HttpStatus statusFromFailure(IncidentCommandFailure failure) {
         if (failure instanceof IncidentCommandFailure.OrganizationNotFound ||
                 failure instanceof IncidentCommandFailure.IncidentNotFound ||
-                failure instanceof IncidentCommandFailure.AssetNotFound) {
+                failure instanceof IncidentCommandFailure.AssetNotFound ||
+                failure instanceof IncidentCommandFailure.DeviceNotFound ||
+                failure instanceof IncidentCommandFailure.ReadingNotFound) {
             return HttpStatus.NOT_FOUND;
+        }
+        if (failure instanceof IncidentCommandFailure.InconsistentReference) {
+            return HttpStatus.BAD_REQUEST;
         }
         if (failure instanceof IncidentCommandFailure.AlreadyAcknowledged ||
                 failure instanceof IncidentCommandFailure.AlreadyEscalated ||
