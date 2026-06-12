@@ -72,6 +72,7 @@ public class ResponseEntityFromIncidentCommandResultAssembler {
             return HttpStatus.NOT_FOUND;
         }
         if (failure instanceof IncidentCommandFailure.AlreadyAcknowledged ||
+                failure instanceof IncidentCommandFailure.AlreadyEscalated ||
                 failure instanceof IncidentCommandFailure.AlreadyResolved ||
                 failure instanceof IncidentCommandFailure.InvalidLifecycleTransition) {
             return HttpStatus.CONFLICT;

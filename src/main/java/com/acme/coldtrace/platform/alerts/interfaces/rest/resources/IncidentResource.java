@@ -19,6 +19,12 @@ import java.time.Instant;
  * @param detectedAt detection timestamp
  * @param acknowledgedAt acknowledgement timestamp
  * @param acknowledgedBy actor that acknowledged the incident
+ * @param escalatedAt escalation timestamp
+ * @param escalatedBy actor that escalated the incident
+ * @param escalationReason reason that justified escalation
+ * @param correctiveActionRegisteredAt corrective action registration timestamp
+ * @param correctiveActionRegisteredBy actor that registered the corrective action
+ * @param correctiveAction corrective action details
  * @param resolvedAt resolution timestamp
  * @param resolvedBy actor that resolved the incident
  * @param resolutionNotes resolution notes
@@ -42,6 +48,12 @@ public record IncidentResource(
         Instant detectedAt,
         Instant acknowledgedAt,
         String acknowledgedBy,
+        Instant escalatedAt,
+        String escalatedBy,
+        String escalationReason,
+        Instant correctiveActionRegisteredAt,
+        String correctiveActionRegisteredBy,
+        String correctiveAction,
         Instant resolvedAt,
         String resolvedBy,
         String resolutionNotes,
