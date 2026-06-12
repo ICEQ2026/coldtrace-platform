@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jp
 
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Role;
 import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.Permission;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.RoleRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;

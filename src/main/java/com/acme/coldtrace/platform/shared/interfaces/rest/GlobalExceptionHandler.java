@@ -1,20 +1,31 @@
 package com.acme.coldtrace.platform.shared.interfaces.rest;
 
+import com.acme.coldtrace.platform.shared.application.result.ApplicationError;
+import com.acme.coldtrace.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.MessageSource;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.web.ErrorResponse;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Locale;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Global exception handler for REST requests.
+ * <p>
+ * It centralizes interface-layer exception mapping and returns the same
+ * {@code ErrorResource} response shape used by explicit application result
+ * assemblers. This keeps validation errors produced by {@code @Valid}
+ * consistent with business-rule and not-found failures returned by command
+ * and query services.
+ *
+ * @since 1.0
+ */
 @Slf4j
+@NullMarked
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private final MessageSource messageSource;
@@ -24,38 +35,51 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles MethodArgumentNotValidException.
-     * @param exception The {@link MethodArgumentNotValidException} exception to handle
-     * @param locale The {@link Locale} locale to use for error messages
-     * @return The {@link ErrorResponse} error response
+     * Handles request body validation failures raised by Spring MVC.
+     *
+     * @param exception validation exception
+     * @return standardized bad-request error response
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    ErrorResponse handleException(MethodArgumentNotValidException exception, Locale locale) {
-        String prefix = messageSource.getMessage("errors.found", null, locale);
-        String fields = exception.getFieldErrors().stream()
-                .map(fieldError -> messageSource.getMessage(fieldError, locale))
-                .collect(Collectors.joining(", "));
-        log.warn("Validation failed: {}", fields);
-        return ErrorResponse.create(
-                exception,
-                HttpStatusCode.valueOf(HttpStatus.BAD_REQUEST.value()),
-                prefix + " " + fields
+    public ResponseEntity<?> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
+        var locale = LocaleContextHolder.getLocale();
+        var prefix = messageSource.getMessage("validation.field.prefix", null, "Field", locale);
+        var details = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> "%s %s: %s".formatted(prefix, error.getField(), error.getDefaultMessage()))
+                .collect(Collectors.joining("; "));
+        if (details.isBlank()) {
+            details = messageSource.getMessage(
+                    "validation.request.failed",
+                    null,
+                    "Request validation failed",
+                    locale
+            );
+        }
+        log.warn("REST request validation failed: {}", details);
+        return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                ApplicationError.validationError("request-body", details)
         );
     }
 
     /**
-     * Handles IllegalArgumentException.
-     * @param exception The {@link IllegalArgumentException} exception to handle
-     * @param locale The {@link Locale} locale to use for error messages
-     * @return The {@link ErrorResponse} error response
+     * Handles invalid path, query or conversion arguments.
+     *
+     * @param exception illegal argument exception
+     * @return standardized bad-request error response
      */
     @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    ErrorResponse handleException(IllegalArgumentException exception, Locale locale) {
-        String messageKey = exception.getMessage() != null ? exception.getMessage() : "errors.found";
-        String message = Objects.requireNonNullElse(messageSource.getMessage(messageKey, null, messageKey, locale), messageKey);
-        log.warn("Illegal argument: {}", message);
-        return ErrorResponse.create(exception, HttpStatusCode.valueOf(HttpStatus.BAD_REQUEST.value()), message);
+    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException exception) {
+        var message = exception.getMessage() != null
+                ? exception.getMessage()
+                : messageSource.getMessage(
+                "validation.request.failed",
+                null,
+                "Request validation failed",
+                LocaleContextHolder.getLocale()
+        );
+        log.warn("REST request argument rejected: {}", message);
+        return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                ApplicationError.validationError("request-argument", message)
+        );
     }
 }

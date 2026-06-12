@@ -10,6 +10,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.OK;
 
 /**
  * Interface layer translator converting user command results to HTTP responses.
@@ -41,6 +42,29 @@ public class ResponseEntityFromUserCommandResultAssembler {
     }
 
     /**
+     * Converts a user role assignment result into an HTTP response.
+     *
+     * @param result user command result
+     * @param messageSource message source for localized failure details
+     * @return 200 response on success or error response on failure
+     */
+    public static ResponseEntity<?> toResponseEntityFromRoleAssignmentResult(
+            Result<User, UserCommandFailure> result,
+            MessageSource messageSource
+    ) {
+        return result.fold(
+                user -> new ResponseEntity<>(UserResourceFromEntityAssembler.toResourceFromEntity(user), OK),
+                failure -> {
+                    var status = statusFromFailure(failure);
+                    return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+                            status,
+                            localizeMessage(messageSource, failure)
+                    ));
+                }
+        );
+    }
+
+    /**
      * Maps a user command failure to an HTTP status.
      *
      * @param failure user command failure
@@ -51,6 +75,7 @@ public class ResponseEntityFromUserCommandResultAssembler {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof UserCommandFailure.OrganizationNotFound ||
+                failure instanceof UserCommandFailure.UserNotFound ||
                 failure instanceof UserCommandFailure.RoleNotFound) {
             return HttpStatus.NOT_FOUND;
         }

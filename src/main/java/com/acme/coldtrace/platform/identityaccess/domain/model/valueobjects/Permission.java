@@ -1,17 +1,16 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects;
 
-import jakarta.persistence.Embeddable;
 import lombok.Getter;
 
 /**
- * Permission value object embedded in a role.
+ * Permission value object assigned to a role.
+ * <p>
  * It mirrors the frontend permission contract with resource, action, and
  * translation-key description fields.
  *
  * @since 1.0
  */
 @Getter
-@Embeddable
 public class Permission {
     private Long id;
     private String resource;

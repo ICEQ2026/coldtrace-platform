@@ -3,10 +3,11 @@ package com.acme.coldtrace.platform.identityaccess.application.internal.commands
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.UserCommandFailure;
 import com.acme.coldtrace.platform.identityaccess.application.commandservices.UserCommandService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.User;
+import com.acme.coldtrace.platform.identityaccess.domain.model.commands.AssignUserRoleCommand;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateUserCommand;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.RoleRepository;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.UserRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.RoleRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.UserRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,7 +49,7 @@ public class UserCommandServiceImpl implements UserCommandService {
     @Override
     @Transactional
     public Result<User, UserCommandFailure> handle(CreateUserCommand command) {
-        if (userRepository.existsByEmailIgnoreCase(command.email())) {
+        if (userRepository.existsByEmail(command.email())) {
             log.warn("Duplicate user email detected: {}", command.email());
             return Result.failure(new UserCommandFailure.DuplicateEmail());
         }
@@ -67,11 +68,48 @@ public class UserCommandServiceImpl implements UserCommandService {
                     user.getId(), user.getEmail(), user.getOrganizationId(), user.getRoleId());
             return Result.success(user);
         } catch (DataIntegrityViolationException exception) {
-            if (userRepository.existsByEmailIgnoreCase(command.email())) {
+            if (userRepository.existsByEmail(command.email())) {
                 log.warn("Duplicate user email detected by constraint: {}", command.email());
                 return Result.failure(new UserCommandFailure.DuplicateEmail());
             }
             throw exception;
         }
+    }
+
+    /**
+     * Handles the assignment of a role to an existing user.
+     * <p>
+     * The operation is intentionally scoped by organization. A user found in
+     * another organization is treated as not found for this route, which keeps
+     * the REST contract aligned with organization-owned user management.
+     *
+     * @param command command containing organization, user and target role identifiers
+     * @return success with the updated user or failure with a command failure type
+     * @see AssignUserRoleCommand
+     */
+    @Override
+    @Transactional
+    public Result<User, UserCommandFailure> handle(AssignUserRoleCommand command) {
+        if (!organizationRepository.existsById(command.organizationId())) {
+            log.warn("Organization not found for user role assignment: organizationId={}", command.organizationId());
+            return Result.failure(new UserCommandFailure.OrganizationNotFound());
+        }
+        var user = userRepository.findByIdAndOrganizationId(command.userId(), command.organizationId());
+        if (user.isEmpty()) {
+            log.warn("User not found for role assignment: organizationId={}, userId={}",
+                    command.organizationId(), command.userId());
+            return Result.failure(new UserCommandFailure.UserNotFound());
+        }
+        if (!roleRepository.existsById(command.roleId())) {
+            log.warn("Role not found for user role assignment: roleId={}", command.roleId());
+            return Result.failure(new UserCommandFailure.RoleNotFound());
+        }
+
+        var userToUpdate = user.get();
+        userToUpdate.assignRole(command);
+        var updatedUser = userRepository.save(userToUpdate);
+        log.info("User role assigned: userId={}, organizationId={}, roleId={}",
+                updatedUser.getId(), updatedUser.getOrganizationId(), updatedUser.getRoleId());
+        return Result.success(updatedUser);
     }
 }

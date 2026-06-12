@@ -8,6 +8,7 @@ package com.acme.coldtrace.platform.identityaccess.application.commandservices;
 public sealed interface UserCommandFailure
         permits UserCommandFailure.DuplicateEmail,
         UserCommandFailure.OrganizationNotFound,
+        UserCommandFailure.UserNotFound,
         UserCommandFailure.RoleNotFound {
     /**
      * Returns the message key associated with the failure.
@@ -42,6 +43,16 @@ public sealed interface UserCommandFailure
         @Override
         public String messageKey() {
             return "identity-access.user.error.organization-not-found";
+        }
+    }
+
+    /**
+     * User not found failure.
+     */
+    record UserNotFound() implements UserCommandFailure {
+        @Override
+        public String messageKey() {
+            return "identity-access.user.error.user-not-found";
         }
     }
 

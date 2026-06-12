@@ -11,11 +11,8 @@ package com.acme.coldtrace.platform.identityaccess.interfaces.rest.resources;
  */
 public record CreateUserResource(
         String firstName,
-
         String lastName,
-
         String email,
-
         Long roleId
 ) {
 }

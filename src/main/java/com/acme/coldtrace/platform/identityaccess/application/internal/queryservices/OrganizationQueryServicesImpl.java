@@ -3,7 +3,7 @@ package com.acme.coldtrace.platform.identityaccess.application.internal.queryser
 import com.acme.coldtrace.platform.identityaccess.application.queryservices.OrganizationQueryService;
 import com.acme.coldtrace.platform.identityaccess.domain.model.aggregates.Organization;
 import com.acme.coldtrace.platform.identityaccess.domain.model.queries.GetAllOrganizationsQuery;
-import com.acme.coldtrace.platform.identityaccess.infrastructure.persistence.jpa.OrganizationRepository;
+import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

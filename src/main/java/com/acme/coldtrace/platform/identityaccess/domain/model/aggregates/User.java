@@ -1,12 +1,9 @@
 package com.acme.coldtrace.platform.identityaccess.domain.model.aggregates;
 
+import com.acme.coldtrace.platform.identityaccess.domain.model.commands.AssignUserRoleCommand;
 import com.acme.coldtrace.platform.identityaccess.domain.model.commands.CreateUserCommand;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.acme.coldtrace.platform.identityaccess.domain.model.valueobjects.EmailAddress;
+import com.acme.coldtrace.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 /**
@@ -16,30 +13,14 @@ import lombok.Getter;
  * @since 1.0
  */
 @Getter
-@Entity
-@Table(name = "users")
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class User extends AbstractDomainAggregateRoot<User> {
     private Long id;
-
     private String uuid;
-
     private Long organizationUserId;
-
-    @Column(nullable = false)
     private String firstName;
-
-    @Column(nullable = false)
     private String lastName;
-
-    @Column(nullable = false, unique = true)
-    private String email;
-
-    @Column(nullable = false)
+    private EmailAddress email;
     private Long organizationId;
-
-    @Column(nullable = false)
     private Long roleId;
 
     protected User() {
@@ -54,8 +35,76 @@ public class User {
     public User(CreateUserCommand command) {
         this.firstName = command.firstName();
         this.lastName = command.lastName();
-        this.email = command.email();
+        this.email = new EmailAddress(command.email());
         this.organizationId = command.organizationId();
+        this.roleId = command.roleId();
+    }
+
+    /**
+     * Rebuilds a user aggregate from persistence state.
+     *
+     * @param id user identifier assigned by persistence
+     * @param uuid optional external uuid
+     * @param organizationUserId optional organization-specific user identifier
+     * @param firstName user first name
+     * @param lastName user last name
+     * @param email user email value object
+     * @param organizationId organization identifier
+     * @param roleId role identifier
+     */
+    public User(
+            Long id,
+            String uuid,
+            Long organizationUserId,
+            String firstName,
+            String lastName,
+            EmailAddress email,
+            Long organizationId,
+            Long roleId
+    ) {
+        this.id = id;
+        this.uuid = uuid;
+        this.organizationUserId = organizationUserId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.organizationId = organizationId;
+        this.roleId = roleId;
+    }
+
+    /**
+     * Returns the user email as a string for application and REST consumers.
+     *
+     * @return user email
+     */
+    public String getEmail() {
+        return this.email.value();
+    }
+
+    /**
+     * Returns the strongly typed user email value object.
+     *
+     * @return email value object
+     */
+    public EmailAddress getEmailValue() {
+        return this.email;
+    }
+
+    /**
+     * Assigns a new role to this user.
+     * <p>
+     * Role existence and organization membership are application concerns
+     * validated before this method is invoked. The aggregate only protects its
+     * own invariant: a persisted user must always keep a valid role reference.
+     *
+     * @param command command containing the target role identifier
+     * @throws IllegalArgumentException if the role identifier is invalid
+     * @see AssignUserRoleCommand
+     */
+    public void assignRole(AssignUserRoleCommand command) {
+        if (command.roleId() == null || command.roleId() <= 0) {
+            throw new IllegalArgumentException("identity-access.user.error.roleId.invalid");
+        }
         this.roleId = command.roleId();
     }
 }

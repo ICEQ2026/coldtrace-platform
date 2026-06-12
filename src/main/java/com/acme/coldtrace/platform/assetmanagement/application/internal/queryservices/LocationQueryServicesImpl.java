@@ -4,7 +4,7 @@ import com.acme.coldtrace.platform.assetmanagement.application.queryservices.Loc
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Location;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetLocationByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.queries.GetLocationsByOrganizationIdQuery;
-import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.LocationRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
