@@ -6,6 +6,7 @@ import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Application-layer implementation of {@link AlertsContextFacade}.
@@ -30,6 +31,15 @@ public class AlertsContextFacadeImpl implements AlertsContextFacade {
                 .toList();
     }
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<IncidentSnapshot> fetchIncidentByIdAndOrganizationId(Long organizationId, Long incidentId) {
+        return incidentRepository.findByIdAndOrganizationId(incidentId, organizationId)
+                .map(this::toSnapshot);
+    }
     private IncidentSnapshot toSnapshot(Incident incident) {
         return new IncidentSnapshot(
                 incident.getId(),
@@ -39,3 +49,4 @@ public class AlertsContextFacadeImpl implements AlertsContextFacade {
         );
     }
 }
+

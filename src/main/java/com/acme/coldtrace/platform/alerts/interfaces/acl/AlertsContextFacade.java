@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.alerts.interfaces.acl;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Published anti-corruption facade for the alerts bounded context.
@@ -21,6 +22,15 @@ public interface AlertsContextFacade {
     List<IncidentSnapshot> fetchIncidentsByOrganizationId(Long organizationId);
 
     /**
+     * Fetches one incident snapshot by organization and incident identifiers.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @return incident snapshot when it belongs to the organization
+     */
+    Optional<IncidentSnapshot> fetchIncidentByIdAndOrganizationId(Long organizationId, Long incidentId);
+
+    /**
      * Incident data published to other bounded contexts.
      */
     record IncidentSnapshot(Long id, Long organizationId, String status, Instant detectedAt) {
@@ -34,3 +44,4 @@ public interface AlertsContextFacade {
         }
     }
 }
+
