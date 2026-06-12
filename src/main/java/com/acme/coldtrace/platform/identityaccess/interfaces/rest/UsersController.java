@@ -79,7 +79,7 @@ public class UsersController {
             @PathVariable Long organizationId) {
         log.debug("GET /organizations/{}/users", organizationId);
         var users = userQueryService.handle(new GetUsersByOrganizationIdQuery(organizationId));
-        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromList(users);
+        return ResponseEntityFromUserQueryResultAssembler.toResponseEntityFromList(users, messageSource);
     }
 
     /**
