@@ -146,7 +146,7 @@ public class MaintenanceSchedulesController {
                     content = @Content(schema = @Schema(implementation = MaintenanceScheduleResource.class))),
             @ApiResponse(responseCode = "400", description = "Bad request or invalid scheduled date",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "404", description = "Organization or asset not found",
+            @ApiResponse(responseCode = "404", description = "Organization, asset or responsible user not found",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Asset already has an active maintenance schedule",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))

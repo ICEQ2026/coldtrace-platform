@@ -70,6 +70,7 @@ public class ResponseEntityFromMaintenanceScheduleCommandResultAssembler {
     private static HttpStatus statusFromFailure(MaintenanceScheduleCommandFailure failure) {
         if (failure instanceof MaintenanceScheduleCommandFailure.OrganizationNotFound ||
                 failure instanceof MaintenanceScheduleCommandFailure.AssetNotFound ||
+                failure instanceof MaintenanceScheduleCommandFailure.ResponsibleUserNotFound ||
                 failure instanceof MaintenanceScheduleCommandFailure.MaintenanceScheduleNotFound) {
             return HttpStatus.NOT_FOUND;
         }

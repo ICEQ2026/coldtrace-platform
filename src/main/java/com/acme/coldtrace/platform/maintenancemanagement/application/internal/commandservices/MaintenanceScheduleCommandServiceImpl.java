@@ -64,6 +64,15 @@ public class MaintenanceScheduleCommandServiceImpl implements MaintenanceSchedul
                     command.organizationId(), command.assetId());
             return Result.failure(new MaintenanceScheduleCommandFailure.AssetNotFound());
         }
+        if (command.responsibleUserId() != null &&
+                !identityAccessContextFacade.userExistsByIdAndOrganizationId(
+                        command.organizationId(),
+                        command.responsibleUserId()
+                )) {
+            log.warn("Responsible user not found for maintenance schedule creation: organizationId={}, userId={}",
+                    command.organizationId(), command.responsibleUserId());
+            return Result.failure(new MaintenanceScheduleCommandFailure.ResponsibleUserNotFound());
+        }
         if (hasActiveScheduleForAsset(command.organizationId(), command.assetId())) {
             log.warn("Duplicate active maintenance schedule rejected: organizationId={}, assetId={}",
                     command.organizationId(), command.assetId());

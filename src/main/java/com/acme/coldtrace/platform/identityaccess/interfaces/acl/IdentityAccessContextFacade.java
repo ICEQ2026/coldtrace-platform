@@ -17,4 +17,13 @@ public interface IdentityAccessContextFacade {
      * @return {@code true} when the organization exists
      */
     boolean organizationExists(Long organizationId);
+
+    /**
+     * Checks whether a user exists inside an organization.
+     *
+     * @param organizationId organization identifier
+     * @param userId user identifier
+     * @return {@code true} when the user belongs to the organization
+     */
+    boolean userExistsByIdAndOrganizationId(Long organizationId, Long userId);
 }
