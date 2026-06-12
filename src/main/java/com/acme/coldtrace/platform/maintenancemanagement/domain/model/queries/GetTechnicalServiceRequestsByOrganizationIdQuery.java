@@ -18,7 +18,7 @@ public record GetTechnicalServiceRequestsByOrganizationIdQuery(Long organization
      */
     public GetTechnicalServiceRequestsByOrganizationIdQuery {
         if (organizationId == null || organizationId <= 0) {
-            throw new IllegalArgumentException("organizationId must be positive");
+            throw new IllegalArgumentException("maintenance-management.technical-service-request.error.organizationId.invalid");
         }
     }
 }

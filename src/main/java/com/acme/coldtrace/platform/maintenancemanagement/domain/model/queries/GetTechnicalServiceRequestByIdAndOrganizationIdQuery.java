@@ -22,10 +22,10 @@ public record GetTechnicalServiceRequestByIdAndOrganizationIdQuery(
      */
     public GetTechnicalServiceRequestByIdAndOrganizationIdQuery {
         if (organizationId == null || organizationId <= 0) {
-            throw new IllegalArgumentException("organizationId must be positive");
+            throw new IllegalArgumentException("maintenance-management.technical-service-request.error.organizationId.invalid");
         }
         if (technicalServiceRequestId == null || technicalServiceRequestId <= 0) {
-            throw new IllegalArgumentException("technicalServiceRequestId must be positive");
+            throw new IllegalArgumentException("maintenance-management.technical-service-request.error.requestId.invalid");
         }
     }
 }
