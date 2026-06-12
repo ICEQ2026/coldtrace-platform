@@ -1,7 +1,11 @@
 package com.acme.coldtrace.platform.identityaccess.application.queryservices;
 
 /**
- * Failure types for user query execution.
+ * Failure types returned by user query application services.
+ * <p>
+ * Query failures are explicit so REST assemblers can map recoverable read errors
+ * to localized API responses without throwing infrastructure exceptions from
+ * controllers.
  *
  * @since 1.0
  */
@@ -23,7 +27,7 @@ public sealed interface UserQueryFailure permits UserQueryFailure.OrganizationNo
     }
 
     /**
-     * Organization not found failure.
+     * Failure returned when the requested organization does not exist.
      */
     record OrganizationNotFound() implements UserQueryFailure {
         @Override
