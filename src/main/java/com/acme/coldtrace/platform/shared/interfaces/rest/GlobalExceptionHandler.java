@@ -44,20 +44,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
         var locale = LocaleContextHolder.getLocale();
         var prefix = messageSource.getMessage("validation.field.prefix", null, "Field", locale);
+        var message = messageSource.getMessage(
+                "validation.request.failed",
+                null,
+                "Request validation failed",
+                locale
+        );
         var details = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> "%s %s: %s".formatted(prefix, error.getField(), error.getDefaultMessage()))
                 .collect(Collectors.joining("; "));
         if (details.isBlank()) {
-            details = messageSource.getMessage(
-                    "validation.request.failed",
-                    null,
-                    "Request validation failed",
-                    locale
-            );
+            details = message;
         }
         log.warn("REST request validation failed: {}", details);
         return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                ApplicationError.validationError("request-body", details)
+                new ApplicationError("VALIDATION_ERROR", message, "request-body: %s".formatted(details))
         );
     }
 
@@ -69,17 +70,27 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException exception) {
-        var message = exception.getMessage() != null
+        var locale = LocaleContextHolder.getLocale();
+        var messageKey = exception.getMessage() != null
                 ? exception.getMessage()
-                : messageSource.getMessage(
-                "validation.request.failed",
+                : "validation.request.failed";
+        var message = messageSource.getMessage(
+                messageKey,
                 null,
-                "Request validation failed",
-                LocaleContextHolder.getLocale()
+                "validation.request.failed",
+                locale
         );
-        log.warn("REST request argument rejected: {}", message);
+        if ("validation.request.failed".equals(message)) {
+            message = messageSource.getMessage(
+                    "validation.request.failed",
+                    null,
+                    "Request validation failed",
+                    locale
+            );
+        }
+        log.warn("REST request argument rejected: {}", messageKey);
         return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                ApplicationError.validationError("request-argument", message)
+                new ApplicationError("VALIDATION_ERROR", message, "request-argument: %s".formatted(messageKey))
         );
     }
 }
