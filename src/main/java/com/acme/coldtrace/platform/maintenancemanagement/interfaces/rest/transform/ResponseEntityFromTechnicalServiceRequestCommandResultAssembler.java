@@ -95,6 +95,9 @@ public final class ResponseEntityFromTechnicalServiceRequestCommandResultAssembl
         if (failure instanceof TechnicalServiceRequestCommandFailure.InvalidTransition) {
             return HttpStatus.CONFLICT;
         }
+        if (failure instanceof TechnicalServiceRequestCommandFailure.InconsistentIncidentReference) {
+            return HttpStatus.BAD_REQUEST;
+        }
         if (failure instanceof TechnicalServiceRequestCommandFailure.OrganizationNotFound ||
                 failure instanceof TechnicalServiceRequestCommandFailure.AssetNotFound ||
                 failure instanceof TechnicalServiceRequestCommandFailure.IncidentNotFound ||

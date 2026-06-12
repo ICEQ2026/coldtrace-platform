@@ -44,9 +44,9 @@ public class AlertsContextFacadeImpl implements AlertsContextFacade {
         return new IncidentSnapshot(
                 incident.getId(),
                 incident.getOrganizationId(),
+                incident.getAssetId(),
                 incident.getStatus().name(),
                 incident.getDetectedAt()
         );
     }
 }
-

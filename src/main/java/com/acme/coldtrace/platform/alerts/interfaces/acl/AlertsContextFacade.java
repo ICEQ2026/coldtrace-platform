@@ -33,7 +33,7 @@ public interface AlertsContextFacade {
     /**
      * Incident data published to other bounded contexts.
      */
-    record IncidentSnapshot(Long id, Long organizationId, String status, Instant detectedAt) {
+    record IncidentSnapshot(Long id, Long organizationId, Long assetId, String status, Instant detectedAt) {
         /**
          * Checks whether the incident is still open from an operational view.
          *
@@ -44,4 +44,3 @@ public interface AlertsContextFacade {
         }
     }
 }
-
