@@ -6,26 +6,61 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.time.OffsetDateTime;
 
+/**
+ * JPA persistence entity for corrective technical service requests.
+ *
+ * @since 1.0
+ */
 @Getter
 @Setter
 @Entity
 @Table(name = "technical_service_requests")
 public class TechnicalServiceRequestPersistenceEntity extends AuditableAbstractPersistenceEntity {
-    @Column(nullable = false) private Long organizationId;
-    @Column(nullable = false) private String code;
-    @Column(nullable = false) private Long assetId;
-    @Column(nullable = false) private Long assetLocationId;
-    @Column(nullable = false) private String assetName;
-    @Column private Long incidentId;
-    @Column(nullable = false, length = 1000) private String issueDescription;
-    @Column(nullable = false) private String priority;
-    @Column(nullable = false) private String status;
-    @Column private String requestedBy;
-    @Column(nullable = false) private OffsetDateTime requestedAt;
-    @Column private OffsetDateTime closedAt;
-    @Column(length = 1000) private String closureSummary;
-    @Column(length = 1000) private String evidence;
-    @Column private String closedBy;
+    @Column(nullable = false)
+    private Long organizationId;
+
+    @Column(nullable = false)
+    private String code;
+
+    @Column(nullable = false)
+    private Long assetId;
+
+    @Column(nullable = false)
+    private Long assetLocationId;
+
+    @Column(nullable = false)
+    private String assetName;
+
+    @Column
+    private Long incidentId;
+
+    @Column(nullable = false, length = 1000)
+    private String issueDescription;
+
+    @Column(nullable = false)
+    private String priority;
+
+    @Column(nullable = false)
+    private String status;
+
+    @Column
+    private String requestedBy;
+
+    @Column(nullable = false)
+    private OffsetDateTime requestedAt;
+
+    @Column
+    private OffsetDateTime closedAt;
+
+    @Column(length = 1000)
+    private String closureSummary;
+
+    @Column(length = 1000)
+    private String evidence;
+
+    @Column
+    private String closedBy;
 }
