@@ -92,7 +92,8 @@ public final class ResponseEntityFromTechnicalServiceRequestCommandResultAssembl
      * @return HTTP status for the failure
      */
     private static HttpStatus statusFromFailure(TechnicalServiceRequestCommandFailure failure) {
-        if (failure instanceof TechnicalServiceRequestCommandFailure.InvalidTransition) {
+        if (failure instanceof TechnicalServiceRequestCommandFailure.InvalidTransition ||
+                failure instanceof TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof TechnicalServiceRequestCommandFailure.InconsistentIncidentReference) {
