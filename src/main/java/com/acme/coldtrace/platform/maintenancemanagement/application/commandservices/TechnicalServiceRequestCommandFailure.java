@@ -10,6 +10,7 @@ public sealed interface TechnicalServiceRequestCommandFailure
         TechnicalServiceRequestCommandFailure.AssetNotFound,
         TechnicalServiceRequestCommandFailure.IncidentNotFound,
         TechnicalServiceRequestCommandFailure.InconsistentIncidentReference,
+        TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest,
         TechnicalServiceRequestCommandFailure.RequestNotFound,
         TechnicalServiceRequestCommandFailure.InvalidStatus,
         TechnicalServiceRequestCommandFailure.InvalidTransition,
@@ -47,6 +48,13 @@ public sealed interface TechnicalServiceRequestCommandFailure
     record InconsistentIncidentReference() implements TechnicalServiceRequestCommandFailure {
         public String messageKey() {
             return "maintenance-management.technical-service-request.error.inconsistent-incident-reference";
+        }
+    }
+
+    /** Incident already has an active technical service request failure. */
+    record DuplicateActiveIncidentRequest() implements TechnicalServiceRequestCommandFailure {
+        public String messageKey() {
+            return "maintenance-management.technical-service-request.error.duplicate-active-incident-request";
         }
     }
 

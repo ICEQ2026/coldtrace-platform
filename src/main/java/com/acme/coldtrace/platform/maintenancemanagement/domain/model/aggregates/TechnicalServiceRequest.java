@@ -146,6 +146,15 @@ public class TechnicalServiceRequest extends AbstractDomainAggregateRoot<Technic
     }
 
     /**
+     * Indicates whether this request is still active for duplicate checks.
+     *
+     * @return true when the request can still consume corrective service capacity
+     */
+    public boolean isActive() {
+        return !TERMINAL_STATUSES.contains(status);
+    }
+
+    /**
      * Updates lifecycle status and captures closure metadata when closing.
      *
      * @param command validated status update command

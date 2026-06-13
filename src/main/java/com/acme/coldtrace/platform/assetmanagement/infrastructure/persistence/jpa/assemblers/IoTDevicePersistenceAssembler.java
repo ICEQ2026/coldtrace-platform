@@ -3,6 +3,7 @@ package com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.j
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.IoTDevice;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.entities.IoTDevicePersistenceEntity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -65,7 +66,7 @@ public final class IoTDevicePersistenceAssembler {
         entity.setDeviceType(iotDevice.getDeviceType());
         entity.setModel(iotDevice.getModel());
         entity.setMeasurementType(iotDevice.getMeasurementType());
-        entity.setMeasurementParameters(List.copyOf(iotDevice.getMeasurementParameters()));
+        entity.setMeasurementParameters(new ArrayList<>(iotDevice.getMeasurementParameters()));
         entity.setReadingFrequencySeconds(iotDevice.getReadingFrequencySeconds());
         entity.setAssetId(iotDevice.getAssetId());
         entity.setStatus(iotDevice.getStatus());

@@ -9,6 +9,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepo
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetSettingsRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ import java.util.List;
  * @since 1.0
  */
 @Service
+@Transactional(readOnly = true)
 public class AssetSettingsQueryServicesImpl implements AssetSettingsQueryService {
     private final AssetSettingsRepository assetSettingsRepository;
     private final AssetRepository assetRepository;

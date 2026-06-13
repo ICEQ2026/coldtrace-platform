@@ -91,6 +91,11 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
             if (incident.get().assetId() == null || !command.assetId().equals(incident.get().assetId())) {
                 return Result.failure(new TechnicalServiceRequestCommandFailure.InconsistentIncidentReference());
             }
+            if (hasActiveRequestForIncident(command.organizationId(), command.incidentId())) {
+                log.warn("Duplicate active technical service request rejected: organizationId={}, incidentId={}",
+                        command.organizationId(), command.incidentId());
+                return Result.failure(new TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest());
+            }
         }
 
         var request = technicalServiceRequestRepository.save(new TechnicalServiceRequest(command, asset.orElseThrow()));
@@ -161,5 +166,11 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
      */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean hasActiveRequestForIncident(Long organizationId, Long incidentId) {
+        return technicalServiceRequestRepository.findAllByOrganizationId(organizationId).stream()
+                .filter(TechnicalServiceRequest::isActive)
+                .anyMatch(request -> incidentId.equals(request.getIncidentId()));
     }
 }
