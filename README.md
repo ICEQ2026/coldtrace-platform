@@ -2,7 +2,12 @@
 
 Spring Boot backend for the ColdTrace final project.
 
-This project follows the same baseline used in the course examples:
+The project follows the same layered and bounded-context style used in the
+course reference projects. The backend exposes organization-scoped REST APIs for
+identity access, asset management, monitoring, alerts, reports, and maintenance
+management.
+
+## Technology Stack
 
 - Java 26
 - Spring Boot 4.0.6
@@ -12,39 +17,38 @@ This project follows the same baseline used in the course examples:
 - MySQL
 - Lombok
 - SpringDoc OpenAPI
+- Google Cloud SQL Java Connector
 
 ## Branching
 
 Use Git Flow for sprint work.
 
-- `main`: stable repository branch
-- `develop`: integration branch
-- `feature/<scope>`: technical work without a Technical Story
-- `feature/TSxx-<scope>`: work linked to a Technical Story
+- `main`: stable release branch used by Cloud Run continuous deployment.
+- `develop`: integration branch for completed sprint work.
+- `feature/<scope>`: technical work without a Technical Story.
+- `feature/TSxx-<scope>`: work linked to a Technical Story.
+- `release/<version>`: release preparation branch from `develop` into `main`.
 
-Current branch for the backend foundation:
-
-```bash
-feature/spring-boot-api-foundation
-```
+Release tags use the `v<major>.<minor>.<patch>` format.
 
 ## Run Locally
 
-Default local execution uses the credentials currently configured in
-`application.properties`:
+Local development uses MySQL and the `dev` profile.
+
+Create or reuse a local MySQL database named:
+
+```text
+coldtrace-platform
+```
+
+Default local credentials are:
 
 ```properties
-spring.datasource.username=root
-spring.datasource.password=root
+DATABASE_USER=root
+DATABASE_PASSWORD=root
 ```
 
-Run with the default profile:
-
-```bash
-./mvnw spring-boot:run
-```
-
-Run with the `dev` profile and environment variables:
+Run the backend locally:
 
 ```bash
 export DATABASE_USER=root
@@ -52,42 +56,138 @@ export DATABASE_PASSWORD=root
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The local database is created automatically when the MySQL user has permission:
+The application starts on port `8080`.
 
-```text
-coldtrace-platform
-```
-
-## Verification
-
-Compile:
-
-```bash
-./mvnw -DskipTests compile
-```
-
-Run tests:
-
-```bash
-./mvnw test
-```
-
-Swagger UI is available after starting the application:
+Local Swagger UI:
 
 ```text
 http://localhost:8080/swagger-ui.html
 ```
 
-OpenAPI JSON:
+Local OpenAPI JSON:
 
 ```text
 http://localhost:8080/v3/api-docs
 ```
 
-## Package Map
+## Production Deployment
 
-The Sprint 3 backend should follow the same bounded-context style used in the
-course projects.
+The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
+for MySQL.
+
+```text
+Google Cloud project: coldtrace-499222
+Cloud Run service: coldtrace-platform
+Region: us-central1
+Cloud SQL instance: coldtrace-mysql
+Cloud SQL connection name: coldtrace-499222:us-central1:coldtrace-mysql
+Database name: coldtrace-platform
+Database user: coldtrace_app
+Artifact Registry repository: coldtrace-docker
+Docker image: us-central1-docker.pkg.dev/coldtrace-499222/coldtrace-docker/coldtrace-platform:latest
+```
+
+Production environment variables:
+
+```properties
+SPRING_PROFILES_ACTIVE=prod
+DATABASE_NAME=coldtrace-platform
+DATABASE_USER=coldtrace_app
+DATABASE_PASSWORD=<cloud-sql-user-password>
+INSTANCE_CONNECTION_NAME=coldtrace-499222:us-central1:coldtrace-mysql
+```
+
+The production JDBC URL is configured in `application-prod.properties` and uses
+the Cloud SQL Java Connector:
+
+```properties
+spring.datasource.url=jdbc:mysql:///${DATABASE_NAME}?cloudSqlInstance=${INSTANCE_CONNECTION_NAME}&socketFactory=com.google.cloud.sql.mysql.SocketFactory&cloudSqlRefreshStrategy=lazy&serverTimezone=UTC
+```
+
+Cloud Build continuous deployment should use:
+
+```text
+Branch regex: ^main$
+Build type: Dockerfile
+Dockerfile location: /Dockerfile
+```
+
+Production API:
+
+```text
+https://coldtrace-platform-dtbzbm7bta-uc.a.run.app
+```
+
+Production Swagger UI:
+
+```text
+https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/swagger-ui/index.html
+```
+
+Production OpenAPI JSON:
+
+```text
+https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/v3/api-docs
+```
+
+## Connect to Cloud SQL Locally
+
+Install the Cloud SQL Auth Proxy:
+
+```bash
+brew install cloud-sql-proxy
+```
+
+Start the proxy from a terminal and keep it running while using MySQL Workbench:
+
+```bash
+env -u GOOGLE_APPLICATION_CREDENTIALS cloud-sql-proxy \
+  --gcloud-auth \
+  --quota-project coldtrace-499222 \
+  --address 127.0.0.1 \
+  --port 3307 \
+  coldtrace-499222:us-central1:coldtrace-mysql
+```
+
+Use these MySQL Workbench values:
+
+```text
+Connection method: Standard TCP/IP
+Hostname: 127.0.0.1
+Port: 3307
+Username: coldtrace_app
+Password: cloud-sql user password
+Default schema: coldtrace-platform
+```
+
+The `env -u GOOGLE_APPLICATION_CREDENTIALS` prefix avoids using credentials from
+another Google Cloud project when this machine has that variable configured.
+
+## Verification
+
+Package the backend:
+
+```bash
+./mvnw -q -DskipTests package
+```
+
+The current repository does not add automated project tests yet, so release
+verification is done with packaging, Swagger/OpenAPI checks, and API smoke flows
+against the deployed Cloud Run service.
+
+Production OpenAPI smoke check:
+
+```bash
+curl -I https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/v3/api-docs
+```
+
+Expected result:
+
+```text
+HTTP/2 200
+```
+
+## Package Map
 
 ```text
 com.acme.coldtrace.platform
@@ -100,103 +200,86 @@ com.acme.coldtrace.platform
 `-- shared
 ```
 
-Suggested responsibility per context:
+Context responsibilities:
 
-- `identityaccess`: organizations, users, roles, permissions, and password reset request data.
-- `assetmanagement`: monitored assets, IoT devices, gateways, and asset settings.
-- `monitoring`: sensor readings and dashboard data sources.
-- `alerts`: incidents, notifications, and incident lifecycle operations.
-- `reports`: operational reports, compliance records, and audit evidence.
-- `maintenancemanagement`: preventive maintenance schedules and technical service requests.
-- `shared`: reusable application, persistence, and REST support.
+- `identityaccess`: organizations, users, roles, and organization sign-up.
+- `assetmanagement`: locations, gateways, assets, IoT devices, and asset settings.
+- `monitoring`: sensor readings and random demo reading generation.
+- `alerts`: incidents, notifications, acknowledgement, escalation, corrective action, and resolution.
+- `reports`: operational reports.
+- `maintenancemanagement`: maintenance schedules and technical service requests.
+- `shared`: reusable application, persistence, domain, and REST support.
 
-Authentication, JWT, CORS hardening, and password reset flows are deferred until
-the corresponding course content is covered.
+Authentication, JWT, password reset, and real session behavior are deferred until
+the corresponding course content is covered. Current APIs are scoped by
+`organizationId` in the route instead of requiring an authenticated principal.
 
-## Frontend API Contract
+## API Overview
 
-The Open Source Angular frontend is the strict API consumer for this backend.
-It currently replaces the backend with JSON Server by building URLs as:
+Identity access:
 
-```text
-environment.platformProviderApiBaseUrl + environment.platformProvider...EndpointPath
-```
-
-For local development that resolves to direct collection paths such as
-`http://localhost:3000/assets`, not `/api/v1/assets`. If the backend later uses
-an `/api/v1` prefix, the Angular environment must be changed at the same time or
-the backend must expose compatibility routes for the direct paths.
-
-The first business endpoints should preserve the same resource names and field
-names used by `coldtrace-frontend/server/db.json`. Collection reads should return
-arrays directly unless the frontend assembler is updated first.
-
-Expected backend endpoints:
-
-| Context | Backend path | Operations |
-| --- | --- | --- |
-| `identityaccess` | `/organization-sign-ups` | `POST` |
-| `identityaccess` | `/organizations` | `GET`, `POST` |
-| `identityaccess` | `/organizations/{organizationId}/users` | `GET`, `POST` |
-| `identityaccess` | `/roles` | `GET`, `PUT /roles/{id}` |
-| `identityaccess` | `/password-reset-requests` | declared for password recovery, real flow deferred |
-| `assetmanagement` | `/assets` | `GET`, `POST`, `PUT /assets/{id}` |
-| `assetmanagement` | `/iot-devices` | `GET`, `POST`, `PUT /iot-devices/{id}` |
-| `assetmanagement` | `/gateways` | `GET`, `POST`, `PUT /gateways/{id}` |
-| `assetmanagement` | `/asset-settings` | `GET`, `POST`, `PUT /asset-settings/{id}` |
-| `monitoring` | `/sensor-readings` | `GET`, `POST` |
-| `alerts` | `/incidents` | `GET`, `POST`, `PUT /incidents/{id}` |
-| `alerts` | `/notifications` | `GET`, `POST` |
-| `reports` | `/reports` | `GET`, `POST` |
-| `maintenancemanagement` | `/maintenance-schedules` | `GET`, `POST`, `PUT /maintenance-schedules/{id}` |
-| `maintenancemanagement` | `/technical-service-requests` | `GET`, `POST`, `PUT /technical-service-requests/{id}` |
-
-The ideal backend sign-up endpoint is `/organization-sign-ups`. It creates the
-organization and its first super administrator user in one transaction. The
-Angular frontend must be adapted away from JSON Server-style ID calculation and
-two-step organization/user creation before consuming this contract. The Angular
-environment also declares `/authentication/sign-up` and `/authentication/sign-in`,
-but real authentication, JWT/session behavior, and password reset flows remain
-deferred until the corresponding sprint ticket.
-
-Use these frontend resource fields as the backend DTO contract:
-
-| Resource | Fields |
+| Path | Operations |
 | --- | --- |
-| `organizations` | `id`, `legalName`, `commercialName`, `taxId`, `contactEmail` |
-| `organization-sign-ups` | request: `legalName`, `commercialName`, `taxId`, `contactEmail`, `firstName`, `lastName`, `email`; response: `organization`, `user` |
-| `users` | response: `id`, `uuid`, `organizationUserId`, `firstName`, `lastName`, `email`, `organizationId`, `roleId`; create request under `/organizations/{organizationId}/users`: `firstName`, `lastName`, `email`, `roleId` |
-| `roles` | `id`, `name`, `label`, `permissions` |
-| `assets` | `id`, `organizationId`, `uuid`, `type`, `gatewayId`, `name`, `location`, `capacity`, `description`, `status`, `lastIncident`, `currentTemperature`, `entryDate`, `connectivity` |
-| `gateways` | `id`, `organizationId`, `uuid`, `name`, `location`, `network`, `status` |
-| `asset-settings` | `id`, `organizationId`, `uuid`, `assetTypes`, `iotDeviceTypes`, `minimumTemperature`, `maximumTemperature`, `maximumHumidity`, `calibrationFrequencyDays`, `temperatureUnit`, `humidityUnit`, `weightUnit`, `assetId` |
-| `iot-devices` | `id`, `organizationId`, `uuid`, `deviceType`, `model`, `measurementType`, `measurementParameters`, `readingFrequencySeconds`, `assetId`, `status`, `calibrationStatus`, `lastCalibrationDate`, `nextCalibrationDate` |
-| `sensor-readings` | `id`, `assetId`, `iotDeviceId`, `temperature`, `humidity`, `isOutOfRange`, `recordedAt`, `motionDetected`, `imageCaptured`, `batteryLevel`, `signalStrength` |
-| `incidents` | `id`, `organizationId`, `assetId`, `assetName`, `type`, `severity`, `value`, `detectedAt`, `status`, `recognizedBy`, `recognizedAt`, `conditionStable`, `correctiveAction`, `closureEvidence`, `closedBy`, `closedAt`, `conditionKey`, `source`, `sourceReadingId`, `reviewStatus`, `escalationStatus`, `escalationLevel`, `escalationPolicyMinutes`, `escalatedAt`, `escalatedTo`, `escalationReviewedBy`, `escalationReviewedAt` |
-| `notifications` | `id`, `organizationId`, `incidentId`, `assetName`, `channel`, `recipient`, `message`, `status`, `createdAt`, `deliveredAt`, `failureReason` |
-| `reports` | `id`, `organizationId`, `uuid`, `type`, `title`, `periodDate`, `generatedAt` |
-| `maintenance-schedules` | `id`, `organizationId`, `uuid`, `assetId`, `iotDeviceId`, `scheduledDate`, `period`, `observations`, `status`, `createdAt` |
-| `technical-service-requests` | `id`, `organizationId`, `uuid`, `assetId`, `priority`, `issueDescription`, `requestedDate`, `status`, `interventionNotes`, `resultNotes`, `functionalTestPassed`, `closedAt` |
+| `/organization-sign-ups` | `POST` |
+| `/organizations` | `GET`, `POST` |
+| `/roles` | `GET` |
+| `/organizations/{organizationId}/users` | `GET`, `POST` |
+| `/organizations/{organizationId}/users/{userId}/role` | `PATCH` |
 
-## Current Sprint Scope
+Asset management:
 
-The first backend foundation work item only prepares the platform baseline. It
-does not implement business endpoints yet.
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/locations` | `GET`, `GET /{locationId}`, `POST`, `PUT /{locationId}` |
+| `/organizations/{organizationId}/gateways` | `GET`, `GET /{gatewayId}`, `POST`, `PUT /{gatewayId}` |
+| `/organizations/{organizationId}/assets` | `GET`, `GET /{assetId}`, `POST`, `PUT /{assetId}` |
+| `/organizations/{organizationId}/iot-devices` | `GET`, `GET /{iotDeviceId}`, `POST`, `PUT /{iotDeviceId}` |
+| `/organizations/{organizationId}/asset-settings` | `GET` |
+| `/organizations/{organizationId}/asset-settings/default` | `PUT` |
+| `/organizations/{organizationId}/assets/{assetId}/settings` | `GET`, `PUT` |
 
-Completed baseline:
+Monitoring:
 
-- Maven project and wrapper
-- Spring Boot application entry point
-- JPA auditing
-- MySQL datasource profiles
-- Snake-case physical naming strategy
-- Shared `Result` type
-- Global validation error handler
-- Message bundles for error localization
-- SpringDoc dependency for Swagger/OpenAPI
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/sensor-readings` | `GET`, `GET /{sensorReadingId}`, `POST` |
+| `/organizations/{organizationId}/sensor-readings/demo-generations` | `POST` |
 
-Next business API after this foundation:
+Alerts:
+
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/incidents` | `GET`, `GET /{incidentId}`, `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/acknowledgements` | `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/escalation` | `PATCH` |
+| `/organizations/{organizationId}/incidents/{incidentId}/corrective-action` | `PATCH` |
+| `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
+| `/organizations/{organizationId}/notifications` | `GET` |
+
+Reports:
+
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/reports` | `GET`, `GET /{reportId}`, `POST` |
+
+Maintenance management:
+
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/maintenance-schedules` | `GET`, `GET /{maintenanceScheduleId}`, `POST`, `PATCH /{maintenanceScheduleId}` |
+| `/organizations/{organizationId}/technical-service-requests` | `GET`, `GET /{technicalServiceRequestId}`, `POST`, `PATCH /{technicalServiceRequestId}` |
+
+## Telemetry Notes
+
+Sensor readings can be created manually or generated internally for demo data.
+The random generation endpoint is:
 
 ```text
-TS01 - Organization Sign-Up API
+POST /organizations/{organizationId}/sensor-readings/demo-generations
 ```
+
+Each IoT device declares the values it supports in `measurementParameters`.
+When creating a manual reading, only send fields supported by that device. For
+example, a device that supports `temperature` and `humidity` should not receive
+extra motion, image, battery, or signal values in the request body.
