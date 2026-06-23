@@ -11,8 +11,8 @@
     <groupId>com.acme</groupId>
     <artifactId>coldtrace-platform</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>coldtrace-platform</name>
-    <description>coldtrace-platform</description>
+    <name>ColdTrace Platform</name>
+    <description>ColdTrace Platform is a RESTful API for cold-chain monitoring, incident management, compliance reporting, and maintenance workflows. It follows the UPC Learning Center Platform structure with Domain-Driven Design, Spring Boot, JPA persistence, localized REST errors, and OpenAPI documentation.</description>
     <url/>
     <licenses>
         <license/>

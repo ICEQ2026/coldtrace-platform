@@ -2,10 +2,11 @@
 
 Spring Boot backend for the ColdTrace final project.
 
-The project follows the same layered and bounded-context style used in the
-course reference projects. The backend exposes organization-scoped REST APIs for
-identity access, asset management, monitoring, alerts, reports, and maintenance
-management.
+The project follows the layered, bounded-context style used in the official UPC
+Learning Center Platform v2610 backend. The backend exposes
+organization-scoped REST APIs for identity access, asset management,
+monitoring, alerts, reports, and maintenance management while preserving
+ColdTrace-specific deployment on Google Cloud Run and Cloud SQL.
 
 ## Technology Stack
 
@@ -18,6 +19,42 @@ management.
 - Lombok
 - SpringDoc OpenAPI
 - Google Cloud SQL Java Connector
+
+## Course Reference Alignment
+
+The backend uses Learning Center Platform v2610 as the primary course-approved
+reference for Spring Boot structure:
+
+- Bounded contexts split into `domain`, `application`, `infrastructure`, and
+  `interfaces`.
+- Thin REST controllers with request/response resources and transform
+  assemblers.
+- Application command/query services returning shared result/error contracts.
+- Domain repository contracts implemented by JPA persistence adapters.
+- Localized REST errors through Spring message bundles.
+- OpenAPI metadata configured in shared infrastructure.
+- Architecture evidence under `docs`.
+
+Security is planned to follow the Learning Center `iam` module as a dedicated
+security/IAM scope. Until that ticket is implemented, current APIs remain
+organization-scoped through route parameters instead of authenticated
+principals.
+
+The planned IAM scope also includes Google and Apple social login. Those
+providers validate external identity only; ColdTrace must still link the
+provider subject to a local user, organization, role, and JWT session. Provider
+secrets and Apple private keys must stay in environment/provider-console
+configuration, never in Angular source or committed files.
+
+## Architecture Docs
+
+The `docs` folder mirrors the course reference repository:
+
+- `docs/software-architecture.dsl`: Structurizr C4 model for the ColdTrace
+  solution.
+- `docs/class-diagram.puml`: PlantUML class diagram focused on backend bounded
+  contexts and shared components.
+- `docs/user-stories.md`: API-facing technical stories and acceptance criteria.
 
 ## Branching
 

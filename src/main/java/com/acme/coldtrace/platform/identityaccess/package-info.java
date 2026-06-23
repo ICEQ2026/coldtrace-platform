@@ -1,7 +1,9 @@
 /**
  * Identity and access context.
  *
- * <p>Sprint 3 covers organizations, users, roles, and permissions as data APIs.
- * Real authentication, JWT, sessions, and password reset are deferred.</p>
+ * <p>The current implementation covers organizations, users, roles, and
+ * permissions as data APIs. Authentication, JWT, protected routes, password
+ * reset, and external identity providers are planned as explicit IAM/security
+ * stories.</p>
  */
 package com.acme.coldtrace.platform.identityaccess;
