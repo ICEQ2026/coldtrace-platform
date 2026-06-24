@@ -3,7 +3,7 @@ package com.acme.coldtrace.platform.reports.application.internal.commandservices
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade.SensorReadingSnapshot;
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportCommandFailure;
@@ -34,20 +34,20 @@ import java.util.Objects;
 @Service
 public class ReportCommandServiceImpl implements ReportCommandService {
     private final ReportRepository reportRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final MonitoringContextFacade monitoringContextFacade;
     private final AlertsContextFacade alertsContextFacade;
 
     public ReportCommandServiceImpl(
             ReportRepository reportRepository,
-            IdentityAccessContextFacade identityAccessContextFacade,
+            IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
             MonitoringContextFacade monitoringContextFacade,
             AlertsContextFacade alertsContextFacade
     ) {
         this.reportRepository = reportRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.monitoringContextFacade = monitoringContextFacade;
         this.alertsContextFacade = alertsContextFacade;
@@ -63,7 +63,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     @Transactional
     public Result<Report, ReportCommandFailure> handle(GenerateReportCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for report generation: organizationId={}", command.organizationId());
             return Result.failure(new ReportCommandFailure.OrganizationNotFound());
         }

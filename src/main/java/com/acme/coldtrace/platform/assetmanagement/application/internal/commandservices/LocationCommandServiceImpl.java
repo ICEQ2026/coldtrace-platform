@@ -6,7 +6,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Locat
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateLocationCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateLocationCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.iam.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;

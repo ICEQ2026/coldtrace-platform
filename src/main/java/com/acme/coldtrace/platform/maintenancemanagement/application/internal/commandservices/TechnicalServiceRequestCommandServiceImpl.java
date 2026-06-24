@@ -2,7 +2,7 @@ package com.acme.coldtrace.platform.maintenancemanagement.application.internal.c
 
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandService;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.TechnicalServiceRequest;
@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServiceRequestCommandService {
     private final TechnicalServiceRequestRepository technicalServiceRequestRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final AlertsContextFacade alertsContextFacade;
 
@@ -37,18 +37,18 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
      * to validate service request creation and status transitions.
      *
      * @param technicalServiceRequestRepository repository for technical service requests
-     * @param identityAccessContextFacade facade used to verify organization existence
+     * @param iamContextFacade facade used to verify organization existence
      * @param assetManagementContextFacade facade used to verify and read assets
      * @param alertsContextFacade facade used to verify related incidents
      */
     public TechnicalServiceRequestCommandServiceImpl(
             TechnicalServiceRequestRepository technicalServiceRequestRepository,
-            IdentityAccessContextFacade identityAccessContextFacade,
+            IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
             AlertsContextFacade alertsContextFacade
     ) {
         this.technicalServiceRequestRepository = technicalServiceRequestRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.alertsContextFacade = alertsContextFacade;
     }
@@ -68,7 +68,7 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
     public Result<TechnicalServiceRequest, TechnicalServiceRequestCommandFailure> handle(
             CreateTechnicalServiceRequestCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new TechnicalServiceRequestCommandFailure.OrganizationNotFound());
         }
 
@@ -123,7 +123,7 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
     public Result<TechnicalServiceRequest, TechnicalServiceRequestCommandFailure> handle(
             UpdateTechnicalServiceRequestStatusCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new TechnicalServiceRequestCommandFailure.OrganizationNotFound());
         }
 
