@@ -90,26 +90,37 @@ DATABASE_PASSWORD=root
 Run the backend locally:
 
 ```bash
-export DATABASE_USER=root
-export DATABASE_PASSWORD=root
-export CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:4200,http://127.0.0.1:4200
+cp .env.example .env.local
+# Fill .env.local with your local provider-console values.
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Google and Apple authentication are disabled until provider client IDs are
-configured. For local social-auth validation, use provider-console values
-through environment variables:
+configured. For local social-auth validation, keep provider-console values in
+`.env.local`. The `dev` profile imports that file automatically, and Git ignores
+it.
+
+```properties
+GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4200
+APPLE_OAUTH_CLIENT_ID=<apple-services-id>
+APPLE_OAUTH_REDIRECT_URI=<configured-apple-redirect-uri>
+APPLE_TEAM_ID=<apple-team-id>
+APPLE_KEY_ID=<apple-key-id>
+APPLE_PRIVATE_KEY=<apple-private-key-p8-content-with-escaped-newlines>
+```
+
+For Apple, `APPLE_PRIVATE_KEY` is the `.p8` file content, not the local file
+path. Convert it to a single-line value before pasting it into `.env.local`:
 
 ```bash
-export GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
-export GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
-export GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4200
-export APPLE_OAUTH_CLIENT_ID=com.coldtrace.web
-export APPLE_OAUTH_REDIRECT_URI=https://coldtrace-frontend-liard.vercel.app/identity-access/sign-in
-export APPLE_TEAM_ID=<apple-team-id>
-export APPLE_KEY_ID=<apple-key-id>
-export APPLE_PRIVATE_KEY='<apple-private-key-p8-content>'
+awk '{printf "%s\\n", $0}' /path/to/AuthKey_XXXXXXXXXX.p8
 ```
+
+`APPLE_OAUTH_REDIRECT_URI` must match the return URL sent by the frontend and
+registered in Apple Developer. Apple web return URLs must use HTTPS, so local
+Apple testing usually uses the deployed Vercel frontend or an HTTPS tunnel.
 
 The application starts on port `8080`.
 
@@ -162,6 +173,10 @@ APPLE_KEY_ID=<apple-key-id>
 APPLE_PRIVATE_KEY=<apple-private-key-p8-content>
 CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend-liard.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
 ```
+
+For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
+environment variable or Secret Manager-backed variable containing the `.p8`
+content, not as a filesystem path.
 
 The production JDBC URL is configured in `application-prod.properties` and uses
 the Cloud SQL Java Connector:
