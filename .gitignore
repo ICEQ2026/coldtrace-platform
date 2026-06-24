@@ -34,3 +34,6 @@ build/
 
 ### Local API clients ###
 bruno/
+
+### macOS ###
+.DS_Store

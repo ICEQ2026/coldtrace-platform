@@ -1,6 +1,6 @@
 package com.acme.coldtrace.platform.maintenancemanagement.application.internal.queryservices;
 
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.queryservices.MaintenanceScheduleQueryFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.queryservices.MaintenanceScheduleQueryService;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.MaintenanceSchedule;
@@ -24,14 +24,14 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class MaintenanceScheduleQueryServiceImpl implements MaintenanceScheduleQueryService {
     private final MaintenanceScheduleRepository maintenanceScheduleRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
 
     public MaintenanceScheduleQueryServiceImpl(
             MaintenanceScheduleRepository maintenanceScheduleRepository,
-            IdentityAccessContextFacade identityAccessContextFacade
+            IamContextFacade iamContextFacade
     ) {
         this.maintenanceScheduleRepository = maintenanceScheduleRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -45,7 +45,7 @@ public class MaintenanceScheduleQueryServiceImpl implements MaintenanceScheduleQ
     public Result<List<MaintenanceSchedule>, MaintenanceScheduleQueryFailure> handle(
             GetMaintenanceSchedulesByOrganizationIdQuery query
     ) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new MaintenanceScheduleQueryFailure.OrganizationNotFound());
         }
         return Result.success(maintenanceScheduleRepository.findAllByOrganizationId(query.organizationId()));
@@ -62,7 +62,7 @@ public class MaintenanceScheduleQueryServiceImpl implements MaintenanceScheduleQ
     public Result<MaintenanceSchedule, MaintenanceScheduleQueryFailure> handle(
             GetMaintenanceScheduleByIdAndOrganizationIdQuery query
     ) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new MaintenanceScheduleQueryFailure.OrganizationNotFound());
         }
         var schedule = maintenanceScheduleRepository.findByIdAndOrganizationId(

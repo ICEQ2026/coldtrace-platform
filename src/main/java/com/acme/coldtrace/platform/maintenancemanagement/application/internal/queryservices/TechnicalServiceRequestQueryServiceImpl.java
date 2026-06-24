@@ -1,6 +1,6 @@
 package com.acme.coldtrace.platform.maintenancemanagement.application.internal.queryservices;
 
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.queryservices.TechnicalServiceRequestQueryFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.queryservices.TechnicalServiceRequestQueryService;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.TechnicalServiceRequest;
@@ -26,21 +26,21 @@ import java.util.List;
 @Service
 public class TechnicalServiceRequestQueryServiceImpl implements TechnicalServiceRequestQueryService {
     private final TechnicalServiceRequestRepository technicalServiceRequestRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
 
     /**
      * Creates the query service with the repository and cross-context facade required
      * to resolve organization-scoped read models.
      *
      * @param technicalServiceRequestRepository repository for technical service requests
-     * @param identityAccessContextFacade facade used to verify organization existence
+     * @param iamContextFacade facade used to verify organization existence
      */
     public TechnicalServiceRequestQueryServiceImpl(
             TechnicalServiceRequestRepository technicalServiceRequestRepository,
-            IdentityAccessContextFacade identityAccessContextFacade
+            IamContextFacade iamContextFacade
     ) {
         this.technicalServiceRequestRepository = technicalServiceRequestRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -54,7 +54,7 @@ public class TechnicalServiceRequestQueryServiceImpl implements TechnicalService
     public Result<List<TechnicalServiceRequest>, TechnicalServiceRequestQueryFailure> handle(
             GetTechnicalServiceRequestsByOrganizationIdQuery query
     ) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new TechnicalServiceRequestQueryFailure.OrganizationNotFound());
         }
         return Result.success(technicalServiceRequestRepository.findAllByOrganizationId(query.organizationId()));
@@ -71,7 +71,7 @@ public class TechnicalServiceRequestQueryServiceImpl implements TechnicalService
     public Result<TechnicalServiceRequest, TechnicalServiceRequestQueryFailure> handle(
             GetTechnicalServiceRequestByIdAndOrganizationIdQuery query
     ) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new TechnicalServiceRequestQueryFailure.OrganizationNotFound());
         }
 

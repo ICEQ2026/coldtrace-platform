@@ -6,7 +6,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentsByOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,14 +24,14 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class IncidentQueryServiceImpl implements IncidentQueryService {
     private final IncidentRepository incidentRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
 
     public IncidentQueryServiceImpl(
             IncidentRepository incidentRepository,
-            IdentityAccessContextFacade identityAccessContextFacade
+            IamContextFacade iamContextFacade
     ) {
         this.incidentRepository = incidentRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -42,7 +42,7 @@ public class IncidentQueryServiceImpl implements IncidentQueryService {
      */
     @Override
     public Result<List<Incident>, IncidentQueryFailure> handle(GetIncidentsByOrganizationIdQuery query) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             log.warn("Organization not found for incident query: organizationId={}", query.organizationId());
             return Result.failure(new IncidentQueryFailure.OrganizationNotFound());
         }
@@ -59,7 +59,7 @@ public class IncidentQueryServiceImpl implements IncidentQueryService {
      */
     @Override
     public Result<Incident, IncidentQueryFailure> handle(GetIncidentByIdAndOrganizationIdQuery query) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             log.warn("Organization not found for incident detail query: organizationId={}", query.organizationId());
             return Result.failure(new IncidentQueryFailure.OrganizationNotFound());
         }

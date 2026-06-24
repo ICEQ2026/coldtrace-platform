@@ -29,6 +29,16 @@ public record ApplicationError(String code, String message, String details) {
     }
 
     /**
+     * Builds an authentication failure for invalid credentials.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code INVALID_CREDENTIALS} code
+     */
+    public static ApplicationError invalidCredentials(String details) {
+        return new ApplicationError("INVALID_CREDENTIALS", "Invalid email or password", details);
+    }
+
+    /**
      * Builds a not-found error for a resource.
      *
      * @param resourceName resource name
