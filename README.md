@@ -32,13 +32,15 @@ reference for Spring Boot structure:
 - Application command/query services returning shared result/error contracts.
 - Domain repository contracts implemented by JPA persistence adapters.
 - Localized REST errors through Spring message bundles.
-- OpenAPI metadata configured in shared infrastructure.
+- OpenAPI metadata and JWT bearer authentication configured in shared infrastructure.
 - Architecture evidence under `docs`.
 
-Security is planned to follow the Learning Center `iam` module as a dedicated
-security/IAM scope. Until that ticket is implemented, current APIs remain
-organization-scoped through route parameters instead of authenticated
-principals.
+Security follows the Learning Center `iam` module as a dedicated security/IAM
+scope. Authentication uses BCrypt password hashing, stateless JWT bearer
+tokens, a Spring Security filter chain, and public access only for sign-in,
+organization bootstrap sign-up, and API documentation routes. Business APIs
+remain organization-scoped through route parameters while authenticated context
+is introduced.
 
 The planned IAM scope also includes Google and Apple social login. Those
 providers validate external identity only; ColdTrace must still link the
@@ -90,6 +92,7 @@ Run the backend locally:
 ```bash
 export DATABASE_USER=root
 export DATABASE_PASSWORD=root
+export CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:4200,http://127.0.0.1:4200
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
@@ -132,6 +135,9 @@ DATABASE_NAME=coldtrace-platform
 DATABASE_USER=coldtrace_app
 DATABASE_PASSWORD=<cloud-sql-user-password>
 INSTANCE_CONNECTION_NAME=coldtrace-499222:us-central1:coldtrace-mysql
+JWT_SECRET=<at-least-32-byte-hs256-secret>
+JWT_EXPIRATION_DAYS=7
+CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
 ```
 
 The production JDBC URL is configured in `application-prod.properties` and uses
@@ -224,11 +230,31 @@ Expected result:
 HTTP/2 200
 ```
 
+Protected route smoke check without a token:
+
+```bash
+curl -i https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/organizations
+```
+
+Expected result:
+
+```text
+HTTP/2 401
+```
+
+CORS preflight smoke check:
+
+```bash
+curl -i -X OPTIONS https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/organizations \
+  -H "Origin: https://coldtrace-frontend.vercel.app" \
+  -H "Access-Control-Request-Method: GET"
+```
+
 ## Package Map
 
 ```text
 com.acme.coldtrace.platform
-|-- identityaccess
+|-- iam
 |-- assetmanagement
 |-- monitoring
 |-- alerts
