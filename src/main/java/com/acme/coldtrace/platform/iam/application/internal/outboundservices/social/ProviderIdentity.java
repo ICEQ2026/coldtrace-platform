@@ -11,6 +11,7 @@ import com.acme.coldtrace.platform.iam.domain.model.valueobjects.SocialProvider;
  * @param fullName profile display name when the provider supplies one
  * @param givenName profile given name when the provider supplies one
  * @param familyName profile family name when the provider supplies one
+ * @param idToken provider ID token verified by the application
  * @since 1.0
  */
 public record ProviderIdentity(
@@ -19,6 +20,7 @@ public record ProviderIdentity(
         String email,
         String fullName,
         String givenName,
-        String familyName
+        String familyName,
+        String idToken
 ) {
 }

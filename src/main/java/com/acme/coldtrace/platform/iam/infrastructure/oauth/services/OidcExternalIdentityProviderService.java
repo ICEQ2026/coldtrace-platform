@@ -119,7 +119,8 @@ public class OidcExternalIdentityProviderService implements ExternalIdentityProv
         }
 
         try {
-            var claims = validateIdToken(command, configuration, idTokenResult.success().orElseThrow());
+            var idToken = idTokenResult.success().orElseThrow();
+            var claims = validateIdToken(command, configuration, idToken);
             var subject = claims.getSubject();
             if (!hasText(subject)) {
                 return providerValidationFailed();
@@ -134,7 +135,8 @@ public class OidcExternalIdentityProviderService implements ExternalIdentityProv
                     email,
                     fullName,
                     givenName,
-                    familyName
+                    familyName,
+                    idToken
             ));
         } catch (Exception exception) {
             log.warn("Provider token validation failed: provider={}, reason={}",

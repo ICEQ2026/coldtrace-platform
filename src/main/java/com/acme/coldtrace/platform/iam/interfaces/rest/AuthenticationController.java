@@ -1,14 +1,17 @@
 package com.acme.coldtrace.platform.iam.interfaces.rest;
 
+import com.acme.coldtrace.platform.iam.application.commandservices.SocialIdentityProfileCommandService;
 import com.acme.coldtrace.platform.iam.application.commandservices.SocialAuthenticationCommandService;
 import com.acme.coldtrace.platform.iam.application.commandservices.SocialOrganizationSignUpCommandService;
 import com.acme.coldtrace.platform.iam.application.commandservices.UserCommandService;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.AuthenticatedUserResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.SignInResource;
+import com.acme.coldtrace.platform.iam.interfaces.rest.resources.SocialIdentityProfileResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.SocialOrganizationSignUpResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.SocialTokenExchangeResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.AuthenticatedUserResourceFromEntityAssembler;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.SignInCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.iam.interfaces.rest.transform.SocialIdentityProfileResourceFromResultAssembler;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.SocialOrganizationSignUpCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.SocialSignInCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.shared.interfaces.rest.resources.ErrorResource;
@@ -43,15 +46,18 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class AuthenticationController {
     private final UserCommandService userCommandService;
     private final SocialAuthenticationCommandService socialAuthenticationCommandService;
+    private final SocialIdentityProfileCommandService socialIdentityProfileCommandService;
     private final SocialOrganizationSignUpCommandService socialOrganizationSignUpCommandService;
 
     public AuthenticationController(
             UserCommandService userCommandService,
             SocialAuthenticationCommandService socialAuthenticationCommandService,
+            SocialIdentityProfileCommandService socialIdentityProfileCommandService,
             SocialOrganizationSignUpCommandService socialOrganizationSignUpCommandService
     ) {
         this.userCommandService = userCommandService;
         this.socialAuthenticationCommandService = socialAuthenticationCommandService;
+        this.socialIdentityProfileCommandService = socialIdentityProfileCommandService;
         this.socialOrganizationSignUpCommandService = socialOrganizationSignUpCommandService;
     }
 
@@ -123,6 +129,41 @@ public class AuthenticationController {
                         authenticated.user(),
                         authenticated.token()
                 ),
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Validates a provider payload and returns profile data for onboarding.
+     *
+     * @param provider provider code, either google or apple
+     * @param resource provider token exchange request
+     * @return social profile preview or standardized error response
+     */
+    @Operation(
+            summary = "Social provider profile preview",
+            description = "Validates a Google or Apple OIDC response server-side and returns verified profile data to prefill organization sign-up")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Social profile validated successfully",
+                    content = @Content(schema = @Schema(implementation = SocialIdentityProfileResource.class))),
+            @ApiResponse(responseCode = "400", description = "Malformed request",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+            @ApiResponse(responseCode = "401", description = "Provider validation failed",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+            @ApiResponse(responseCode = "503", description = "Provider configuration is missing",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+    })
+    @PostMapping("/social/{provider}/profile-preview")
+    public ResponseEntity<?> socialProfilePreview(
+            @PathVariable String provider,
+            @RequestBody SocialTokenExchangeResource resource
+    ) {
+        log.debug("POST /api/v1/authentication/social/{}/profile-preview", provider);
+        var command = SocialSignInCommandFromResourceAssembler.toCommandFromResource(provider, resource);
+        var result = socialIdentityProfileCommandService.handle(command);
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                SocialIdentityProfileResourceFromResultAssembler::toResourceFromResult,
                 HttpStatus.OK
         );
     }
