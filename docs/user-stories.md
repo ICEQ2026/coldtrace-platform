@@ -10,7 +10,7 @@ Common conventions:
 - All request and response bodies use `Content-Type: application/json`
 - Error responses follow the shared `ErrorResource` schema with `code`, `message`, and `details`
 - Current implemented endpoints are organization-scoped through `{organizationId}` route parameters
-- Planned security work will move protected routes to JWT Bearer authentication following Learning Center Platform v2610
+- Protected routes use JWT Bearer authentication following Learning Center Platform v2610
 
 ---
 
@@ -56,7 +56,7 @@ Acceptance criteria:
 
 As a frontend developer, I want to authenticate users through the backend so that protected operational endpoints are accessed with a valid token.
 
-Status: planned security ticket.
+Status: implemented security ticket.
 
 Acceptance criteria:
 
@@ -79,7 +79,16 @@ Acceptance criteria:
 
 As a frontend developer, I want to authenticate or link a ColdTrace account with Google or Apple so that users can use the existing social login buttons without bypassing ColdTrace organization and role rules.
 
-Status: planned security ticket.
+Status: implemented security ticket.
+
+Contract:
+
+- `POST /api/v1/authentication/social/google/token-exchange`
+- `POST /api/v1/authentication/social/apple/token-exchange`
+- Request body accepts either `idToken` or `authorizationCode`, plus optional `redirectUri` and `nonce`.
+- Success returns the same `AuthenticatedUserResponse` used by email/password sign-in.
+- Provider validation failures return `401 PROVIDER_VALIDATION_FAILED`.
+- Valid provider identities without a local ColdTrace user return `422 SOCIAL_IDENTITY_REQUIRES_ONBOARDING`.
 
 Acceptance criteria:
 

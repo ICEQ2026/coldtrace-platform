@@ -39,6 +39,44 @@ public record ApplicationError(String code, String message, String details) {
     }
 
     /**
+     * Builds a provider authentication failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code PROVIDER_VALIDATION_FAILED} code
+     */
+    public static ApplicationError providerValidationFailed(String details) {
+        return new ApplicationError("PROVIDER_VALIDATION_FAILED", "Provider validation failed", details);
+    }
+
+    /**
+     * Builds a social onboarding-required failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code SOCIAL_IDENTITY_REQUIRES_ONBOARDING} code
+     */
+    public static ApplicationError socialIdentityRequiresOnboarding(String details) {
+        return new ApplicationError(
+                "SOCIAL_IDENTITY_REQUIRES_ONBOARDING",
+                "Social identity requires onboarding",
+                details
+        );
+    }
+
+    /**
+     * Builds a social provider configuration failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code SOCIAL_PROVIDER_CONFIGURATION_MISSING} code
+     */
+    public static ApplicationError socialProviderConfigurationMissing(String details) {
+        return new ApplicationError(
+                "SOCIAL_PROVIDER_CONFIGURATION_MISSING",
+                "Social provider configuration is missing",
+                details
+        );
+    }
+
+    /**
      * Builds a not-found error for a resource.
      *
      * @param resourceName resource name

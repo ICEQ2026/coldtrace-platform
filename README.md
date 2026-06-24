@@ -96,6 +96,21 @@ export CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:4200,http://127.0.0.1:4200
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+Google and Apple authentication are disabled until provider client IDs are
+configured. For local social-auth validation, use provider-console values
+through environment variables:
+
+```bash
+export GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
+export GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
+export GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4200
+export APPLE_OAUTH_CLIENT_ID=com.coldtrace.web
+export APPLE_OAUTH_REDIRECT_URI=https://coldtrace-frontend-liard.vercel.app/identity-access/sign-in
+export APPLE_TEAM_ID=<apple-team-id>
+export APPLE_KEY_ID=<apple-key-id>
+export APPLE_PRIVATE_KEY='<apple-private-key-p8-content>'
+```
+
 The application starts on port `8080`.
 
 Local Swagger UI:
@@ -137,7 +152,15 @@ DATABASE_PASSWORD=<cloud-sql-user-password>
 INSTANCE_CONNECTION_NAME=coldtrace-499222:us-central1:coldtrace-mysql
 JWT_SECRET=<at-least-32-byte-hs256-secret>
 JWT_EXPIRATION_DAYS=7
-CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
+GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
+GOOGLE_OAUTH_REDIRECT_URI=<configured-google-origin-redirect-uri>
+APPLE_OAUTH_CLIENT_ID=<apple-services-id>
+APPLE_OAUTH_REDIRECT_URI=<configured-apple-redirect-uri>
+APPLE_TEAM_ID=<apple-team-id>
+APPLE_KEY_ID=<apple-key-id>
+APPLE_PRIVATE_KEY=<apple-private-key-p8-content>
+CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend-liard.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
 ```
 
 The production JDBC URL is configured in `application-prod.properties` and uses
@@ -250,6 +273,52 @@ curl -i -X OPTIONS https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/organizati
   -H "Access-Control-Request-Method: GET"
 ```
 
+Social provider configuration smoke check:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/authentication/social/google/token-exchange \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"invalid"}'
+```
+
+Expected result without `GOOGLE_OAUTH_CLIENT_ID`:
+
+```text
+HTTP/1.1 503
+code: SOCIAL_PROVIDER_CONFIGURATION_MISSING
+```
+
+Expected result with provider configuration but an invalid token:
+
+```text
+HTTP/1.1 401
+code: PROVIDER_VALIDATION_FAILED
+```
+
+Google success or onboarding smoke check:
+
+```bash
+export GOOGLE_AUTHORIZATION_CODE=<real-google-authorization-code-from-configured-client>
+curl -i -X POST http://localhost:8080/api/v1/authentication/social/google/token-exchange \
+  -H "Content-Type: application/json" \
+  -d "{\"authorizationCode\":\"${GOOGLE_AUTHORIZATION_CODE}\",\"redirectUri\":\"http://localhost:4200\"}"
+```
+
+Expected result when the provider subject is already linked, or when the
+verified provider email matches an existing ColdTrace user and can be linked:
+
+```text
+HTTP/1.1 200
+```
+
+Expected result when the provider token is valid but no ColdTrace user can be
+linked:
+
+```text
+HTTP/1.1 422
+code: SOCIAL_IDENTITY_REQUIRES_ONBOARDING
+```
+
 ## Package Map
 
 ```text
@@ -265,7 +334,7 @@ com.acme.coldtrace.platform
 
 Context responsibilities:
 
-- `identityaccess`: organizations, users, roles, and organization sign-up.
+- `iam`: organizations, users, roles, organization sign-up, email/password authentication, JWT sessions, and Google/Apple external identity links.
 - `assetmanagement`: locations, gateways, assets, IoT devices, and asset settings.
 - `monitoring`: sensor readings and random demo reading generation.
 - `alerts`: incidents, notifications, acknowledgement, escalation, corrective action, and resolution.
@@ -273,9 +342,8 @@ Context responsibilities:
 - `maintenancemanagement`: maintenance schedules and technical service requests.
 - `shared`: reusable application, persistence, domain, and REST support.
 
-Authentication, JWT, password reset, and real session behavior are deferred until
-the corresponding course content is covered. Current APIs are scoped by
-`organizationId` in the route instead of requiring an authenticated principal.
+Password reset remains deferred. Authentication uses ColdTrace JWT sessions;
+business APIs still preserve organization ownership through route parameters.
 
 ## API Overview
 
@@ -283,6 +351,8 @@ Identity access:
 
 | Path | Operations |
 | --- | --- |
+| `/authentication/sign-in` | `POST` |
+| `/authentication/social/{provider}/token-exchange` | `POST` |
 | `/organization-sign-ups` | `POST` |
 | `/organizations` | `GET`, `POST` |
 | `/roles` | `GET` |
