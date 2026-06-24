@@ -147,9 +147,6 @@ public class OidcExternalIdentityProviderService implements ExternalIdentityProv
             SocialSignInCommand command,
             ProviderConfiguration configuration
     ) {
-        if (command.provider() == SocialProvider.APPLE && hasText(command.authorizationCode())) {
-            return exchangeAuthorizationCode(command, configuration);
-        }
         if (hasText(command.idToken())) {
             return Result.success(command.idToken());
         }
