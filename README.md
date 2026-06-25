@@ -133,6 +133,44 @@ Local OpenAPI JSON:
 http://localhost:8080/v3/api-docs
 ```
 
+## AI Assistance Configuration
+
+TS18 adds the Spring AI foundation used by future AI-assisted incident,
+dashboard, and compliance use cases. The backend owns provider selection,
+prompt templates, structured output conversion, validation, timeout handling,
+and provider error mapping. Frontend applications must call ColdTrace backend
+endpoints added by later tickets instead of calling AI providers directly.
+
+Local development can use Ollama without an API token:
+
+```bash
+brew install ollama
+ollama pull gemma3:4b
+
+export AI_MODEL_PROVIDER=ollama
+export AI_MODEL_NAME=gemma3:4b
+export OLLAMA_BASE_URL=http://localhost:11434
+export AI_REQUEST_TIMEOUT=30s
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Production or deployed academic environments can use OpenAI through the same
+Spring AI abstraction:
+
+```bash
+export AI_MODEL_PROVIDER=openai
+export AI_MODEL_NAME=gpt-5.4-mini
+export OPENAI_API_KEY=<project-api-key>
+export AI_REQUEST_TIMEOUT=30s
+```
+
+Keep `OPENAI_API_KEY` and any provider keys in environment variables or the
+deployment secret manager. Do not commit provider keys, paste them in frontend
+code, or include them in screenshots. If the configured provider is unavailable,
+disabled, unsupported, times out, or returns invalid structured output, the AI
+application service returns a controlled failure instead of exposing raw model
+text.
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -169,6 +207,10 @@ APPLE_TEAM_ID=<apple-team-id>
 APPLE_KEY_ID=<apple-key-id>
 APPLE_PRIVATE_KEY=<apple-private-key-p8-content>
 CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend-liard.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
+AI_MODEL_PROVIDER=openai
+AI_MODEL_NAME=gpt-5.4-mini
+OPENAI_API_KEY=<openai-project-api-key>
+AI_REQUEST_TIMEOUT=30s
 ```
 
 For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
@@ -248,6 +290,11 @@ Package the backend:
 ```bash
 ./mvnw -q -DskipTests package
 ```
+
+TS18 does not introduce public AI product endpoints. AI smoke validation for
+this foundation ticket is packaging plus starting the backend with either the
+local Ollama configuration or deployed OpenAI environment variables. Later AI
+API tickets should add endpoint-level Swagger and curl checks.
 
 The current repository does not add automated project tests yet, so release
 verification is done with packaging, Swagger/OpenAPI checks, and API smoke flows
@@ -335,6 +382,7 @@ code: SOCIAL_IDENTITY_REQUIRES_ONBOARDING
 
 ```text
 com.acme.coldtrace.platform
+|-- aiassistance
 |-- iam
 |-- assetmanagement
 |-- monitoring
@@ -346,6 +394,9 @@ com.acme.coldtrace.platform
 
 Context responsibilities:
 
+- `aiassistance`: Spring AI provider configuration, backend-owned prompt
+  templates, structured advisory output, validation, timeout handling, and
+  controlled provider failures.
 - `iam`: organizations, users, roles, organization sign-up, email/password authentication, JWT sessions, and Google/Apple external identity links.
 - `assetmanagement`: locations, gateways, assets, IoT devices, and asset settings.
 - `monitoring`: sensor readings and random demo reading generation.
