@@ -1,5 +1,5 @@
 @startuml
-' ColdTrace Platform - backend class diagram aligned with Learning Center Platform style
+' ColdTrace Platform - backend class diagram
 
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle

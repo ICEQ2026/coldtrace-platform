@@ -5,10 +5,9 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Application-layer error representation shared by REST assemblers.
  * <p>
- * The record follows the same shape used by the current course reference:
- * an error code identifies the category, a message contains the default
- * human-readable text, and details preserve the bounded-context-specific
- * message key or contextual data needed by the interface layer.
+ * The record keeps a stable error code, a default human-readable message, and
+ * details with the bounded-context-specific message key or contextual data
+ * needed by the interface layer.
  *
  * @param code stable error code used by clients and response mappers
  * @param message default non-localized error message

@@ -2,9 +2,8 @@
 
 Spring Boot backend for the ColdTrace final project.
 
-The project follows the layered, bounded-context style used in the official UPC
-Learning Center Platform v2610 backend. The backend exposes
-organization-scoped REST APIs for identity access, asset management,
+The project follows a layered, bounded-context backend architecture. The backend
+exposes organization-scoped REST APIs for identity access, asset management,
 monitoring, alerts, reports, and maintenance management while preserving
 ColdTrace-specific deployment on Google Cloud Run and Cloud SQL.
 
@@ -20,10 +19,9 @@ ColdTrace-specific deployment on Google Cloud Run and Cloud SQL.
 - SpringDoc OpenAPI
 - Google Cloud SQL Java Connector
 
-## Course Reference Alignment
+## Architecture
 
-The backend uses Learning Center Platform v2610 as the primary course-approved
-reference for Spring Boot structure:
+The backend is organized around Spring Boot bounded contexts:
 
 - Bounded contexts split into `domain`, `application`, `infrastructure`, and
   `interfaces`.
@@ -35,12 +33,11 @@ reference for Spring Boot structure:
 - OpenAPI metadata and JWT bearer authentication configured in shared infrastructure.
 - Architecture evidence under `docs`.
 
-Security follows the Learning Center `iam` module as a dedicated security/IAM
-scope. Authentication uses BCrypt password hashing, stateless JWT bearer
-tokens, a Spring Security filter chain, and public access only for sign-in,
-organization bootstrap sign-up, and API documentation routes. Business APIs
-remain organization-scoped through route parameters while authenticated context
-is introduced.
+Security is handled by a dedicated IAM scope. Authentication uses BCrypt
+password hashing, stateless JWT bearer tokens, a Spring Security filter chain,
+and public access only for sign-in, organization bootstrap sign-up, and API
+documentation routes. Business APIs remain organization-scoped through route
+parameters while authenticated context is introduced.
 
 The planned IAM scope also includes Google and Apple social login. Those
 providers validate external identity only; ColdTrace must still link the
@@ -50,7 +47,7 @@ configuration, never in Angular source or committed files.
 
 ## Architecture Docs
 
-The `docs` folder mirrors the course reference repository:
+The `docs` folder documents the ColdTrace backend architecture:
 
 - `docs/software-architecture.dsl`: Structurizr C4 model for the ColdTrace
   solution.

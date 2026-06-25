@@ -15,8 +15,7 @@ import java.util.Locale;
  * Assembler for converting application errors into REST error resources.
  * <p>
  * This class centralizes the HTTP status and response-body shape used by
- * controllers, mirroring the current course reference while preserving the
- * existing ColdTrace i18n message keys.
+ * controllers while preserving the existing ColdTrace i18n message keys.
  *
  * @since 1.0
  */

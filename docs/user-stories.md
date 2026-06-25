@@ -10,7 +10,7 @@ Common conventions:
 - All request and response bodies use `Content-Type: application/json`
 - Error responses follow the shared `ErrorResource` schema with `code`, `message`, and `details`
 - Current implemented endpoints are organization-scoped through `{organizationId}` route parameters
-- Protected routes use JWT Bearer authentication following Learning Center Platform v2610
+- Protected routes use JWT Bearer authentication.
 
 ---
 
