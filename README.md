@@ -2,9 +2,8 @@
 
 Spring Boot backend for the ColdTrace final project.
 
-The project follows the layered, bounded-context style used in the official UPC
-Learning Center Platform v2610 backend. The backend exposes
-organization-scoped REST APIs for identity access, asset management,
+The project follows a layered, bounded-context backend architecture. The backend
+exposes organization-scoped REST APIs for identity access, asset management,
 monitoring, alerts, reports, and maintenance management while preserving
 ColdTrace-specific deployment on Google Cloud Run and Cloud SQL.
 
@@ -20,10 +19,9 @@ ColdTrace-specific deployment on Google Cloud Run and Cloud SQL.
 - SpringDoc OpenAPI
 - Google Cloud SQL Java Connector
 
-## Course Reference Alignment
+## Architecture
 
-The backend uses Learning Center Platform v2610 as the primary course-approved
-reference for Spring Boot structure:
+The backend is organized around Spring Boot bounded contexts:
 
 - Bounded contexts split into `domain`, `application`, `infrastructure`, and
   `interfaces`.
@@ -35,12 +33,11 @@ reference for Spring Boot structure:
 - OpenAPI metadata and JWT bearer authentication configured in shared infrastructure.
 - Architecture evidence under `docs`.
 
-Security follows the Learning Center `iam` module as a dedicated security/IAM
-scope. Authentication uses BCrypt password hashing, stateless JWT bearer
-tokens, a Spring Security filter chain, and public access only for sign-in,
-organization bootstrap sign-up, and API documentation routes. Business APIs
-remain organization-scoped through route parameters while authenticated context
-is introduced.
+Security is handled by a dedicated IAM scope. Authentication uses BCrypt
+password hashing, stateless JWT bearer tokens, a Spring Security filter chain,
+and public access only for sign-in, organization bootstrap sign-up, and API
+documentation routes. Business APIs remain organization-scoped through route
+parameters while authenticated context is introduced.
 
 The planned IAM scope also includes Google and Apple social login. Those
 providers validate external identity only; ColdTrace must still link the
@@ -50,7 +47,7 @@ configuration, never in Angular source or committed files.
 
 ## Architecture Docs
 
-The `docs` folder mirrors the course reference repository:
+The `docs` folder documents the ColdTrace backend architecture:
 
 - `docs/software-architecture.dsl`: Structurizr C4 model for the ColdTrace
   solution.
@@ -90,11 +87,37 @@ DATABASE_PASSWORD=root
 Run the backend locally:
 
 ```bash
-export DATABASE_USER=root
-export DATABASE_PASSWORD=root
-export CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:4200,http://127.0.0.1:4200
+cp .env.example .env.local
+# Fill .env.local with your local provider-console values.
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+Google and Apple authentication are disabled until provider client IDs are
+configured. For local social-auth validation, keep provider-console values in
+`.env.local`. The `dev` profile imports that file automatically, and Git ignores
+it.
+
+```properties
+GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4200
+APPLE_OAUTH_CLIENT_ID=<apple-services-id>
+APPLE_OAUTH_REDIRECT_URI=<configured-apple-redirect-uri>
+APPLE_TEAM_ID=<apple-team-id>
+APPLE_KEY_ID=<apple-key-id>
+APPLE_PRIVATE_KEY=<apple-private-key-p8-content-with-escaped-newlines>
+```
+
+For Apple, `APPLE_PRIVATE_KEY` is the `.p8` file content, not the local file
+path. Convert it to a single-line value before pasting it into `.env.local`:
+
+```bash
+awk '{printf "%s\\n", $0}' /path/to/AuthKey_XXXXXXXXXX.p8
+```
+
+`APPLE_OAUTH_REDIRECT_URI` must match the return URL sent by the frontend and
+registered in Apple Developer. Apple web return URLs must use HTTPS, so local
+Apple testing usually uses the deployed Vercel frontend or an HTTPS tunnel.
 
 The application starts on port `8080`.
 
@@ -137,8 +160,20 @@ DATABASE_PASSWORD=<cloud-sql-user-password>
 INSTANCE_CONNECTION_NAME=coldtrace-499222:us-central1:coldtrace-mysql
 JWT_SECRET=<at-least-32-byte-hs256-secret>
 JWT_EXPIRATION_DAYS=7
-CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
+GOOGLE_OAUTH_CLIENT_ID=<google-web-client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<google-web-client-secret>
+GOOGLE_OAUTH_REDIRECT_URI=<configured-google-origin-redirect-uri>
+APPLE_OAUTH_CLIENT_ID=<apple-services-id>
+APPLE_OAUTH_REDIRECT_URI=<configured-apple-redirect-uri>
+APPLE_TEAM_ID=<apple-team-id>
+APPLE_KEY_ID=<apple-key-id>
+APPLE_PRIVATE_KEY=<apple-private-key-p8-content>
+CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend-liard.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
 ```
+
+For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
+environment variable or Secret Manager-backed variable containing the `.p8`
+content, not as a filesystem path.
 
 The production JDBC URL is configured in `application-prod.properties` and uses
 the Cloud SQL Java Connector:
@@ -250,6 +285,52 @@ curl -i -X OPTIONS https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/organizati
   -H "Access-Control-Request-Method: GET"
 ```
 
+Social provider configuration smoke check:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/authentication/social/google/token-exchange \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"invalid"}'
+```
+
+Expected result without `GOOGLE_OAUTH_CLIENT_ID`:
+
+```text
+HTTP/1.1 503
+code: SOCIAL_PROVIDER_CONFIGURATION_MISSING
+```
+
+Expected result with provider configuration but an invalid token:
+
+```text
+HTTP/1.1 401
+code: PROVIDER_VALIDATION_FAILED
+```
+
+Google success or onboarding smoke check:
+
+```bash
+export GOOGLE_AUTHORIZATION_CODE=<real-google-authorization-code-from-configured-client>
+curl -i -X POST http://localhost:8080/api/v1/authentication/social/google/token-exchange \
+  -H "Content-Type: application/json" \
+  -d "{\"authorizationCode\":\"${GOOGLE_AUTHORIZATION_CODE}\",\"redirectUri\":\"http://localhost:4200\"}"
+```
+
+Expected result when the provider subject is already linked, or when the
+verified provider email matches an existing ColdTrace user and can be linked:
+
+```text
+HTTP/1.1 200
+```
+
+Expected result when the provider token is valid but no ColdTrace user can be
+linked:
+
+```text
+HTTP/1.1 422
+code: SOCIAL_IDENTITY_REQUIRES_ONBOARDING
+```
+
 ## Package Map
 
 ```text
@@ -265,7 +346,7 @@ com.acme.coldtrace.platform
 
 Context responsibilities:
 
-- `identityaccess`: organizations, users, roles, and organization sign-up.
+- `iam`: organizations, users, roles, organization sign-up, email/password authentication, JWT sessions, and Google/Apple external identity links.
 - `assetmanagement`: locations, gateways, assets, IoT devices, and asset settings.
 - `monitoring`: sensor readings and random demo reading generation.
 - `alerts`: incidents, notifications, acknowledgement, escalation, corrective action, and resolution.
@@ -273,9 +354,8 @@ Context responsibilities:
 - `maintenancemanagement`: maintenance schedules and technical service requests.
 - `shared`: reusable application, persistence, domain, and REST support.
 
-Authentication, JWT, password reset, and real session behavior are deferred until
-the corresponding course content is covered. Current APIs are scoped by
-`organizationId` in the route instead of requiring an authenticated principal.
+Password reset remains deferred. Authentication uses ColdTrace JWT sessions;
+business APIs still preserve organization ownership through route parameters.
 
 ## API Overview
 
@@ -283,6 +363,8 @@ Identity access:
 
 | Path | Operations |
 | --- | --- |
+| `/authentication/sign-in` | `POST` |
+| `/authentication/social/{provider}/token-exchange` | `POST` |
 | `/organization-sign-ups` | `POST` |
 | `/organizations` | `GET`, `POST` |
 | `/roles` | `GET` |

@@ -37,6 +37,12 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public Optional<User> findById(Long id) {
+        return userPersistenceRepository.findById(id)
+                .map(UserPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    @Override
     public Optional<User> findByEmail(String email) {
         return userPersistenceRepository.findByEmail(new EmailAddress(email))
                 .map(UserPersistenceAssembler::toDomainFromPersistence);

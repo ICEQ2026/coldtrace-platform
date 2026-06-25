@@ -33,6 +33,14 @@ public interface UserRepository {
     Optional<User> findByIdAndOrganizationId(Long id, Long organizationId);
 
     /**
+     * Finds a user by its identifier.
+     *
+     * @param id user identifier
+     * @return matching user when found
+     */
+    Optional<User> findById(Long id);
+
+    /**
      * Finds a user by email.
      *
      * @param email user email
