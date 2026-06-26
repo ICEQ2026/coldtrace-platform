@@ -193,6 +193,30 @@ curl -X POST \
   -d '{"question":"What should I review first?"}'
 ```
 
+## Billing Plan Catalog
+
+TS24 exposes a public, read-only catalog for Base, Operations, and Compliance AI:
+
+```bash
+curl -i http://localhost:8080/api/v1/subscription-plans
+```
+
+Expected result:
+
+- `200 OK` without a bearer token.
+- Three active plans ordered by monthly price.
+- Each plan includes `code`, `displayName`, `monthlyPriceCents`, `currency`,
+  optional `stripePriceId`, `usageLimits`, `featureFlags`, `recommended`, and
+  `visible`.
+
+Stripe price identifiers are optional configuration values, not hardcoded live
+billing credentials:
+
+```bash
+export STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
+export STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
+```
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -233,6 +257,8 @@ AI_MODEL_PROVIDER=openai
 AI_MODEL_NAME=gpt-5.4-mini
 OPENAI_API_KEY=<openai-project-api-key>
 AI_REQUEST_TIMEOUT=30s
+STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
+STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
 ```
 
 For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
@@ -528,6 +554,7 @@ Context responsibilities:
 - `alerts`: incidents, notifications, acknowledgement, escalation, corrective action, and resolution.
 - `reports`: operational reports.
 - `maintenancemanagement`: maintenance schedules and technical service requests.
+- `billing`: public subscription plan catalog, pricing metadata, and future organization subscription state.
 - `shared`: reusable application, persistence, domain, and REST support.
 
 Password reset remains deferred. Authentication uses ColdTrace JWT sessions;
@@ -597,6 +624,17 @@ AI assistance:
 | Path | Operations |
 | --- | --- |
 | `/organizations/{organizationId}/dashboard/ai-interpretation` | `POST` |
+
+Billing:
+
+| Path | Operations |
+| --- | --- |
+| `/api/v1/subscription-plans` | `GET` |
+
+The subscription plan catalog is public and read-only so the landing page can
+show the same Base, Operations, and Compliance AI definitions as the app. The
+same route is also available without the `/api/v1` prefix for local API
+compatibility.
 
 Maintenance management:
 
