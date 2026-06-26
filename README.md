@@ -316,6 +316,36 @@ HTTP/1.1 201
 The generated plan is persisted as pending and the incident remains open or
 acknowledged until a later human approval flow resolves it.
 
+AI resolution plan approval smoke check, replacing the ids with a pending plan
+that belongs to an open or acknowledged incident:
+
+```bash
+curl -i -X POST \
+  http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans/1/approve \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "approvedBy": "operations.manager@coldtrace.test",
+    "finalCorrectiveAction": "Moved inventory to backup freezer and recalibrated the affected sensor.",
+    "finalResolutionNotes": "Temperature returned to safe range after transfer and recalibration."
+  }'
+```
+
+Expected result for a valid pending plan:
+
+```text
+HTTP/1.1 200
+{
+  "status": "approved",
+  "approvedBy": "operations.manager@coldtrace.test",
+  "finalCorrectiveAction": "...",
+  "finalResolutionNotes": "..."
+}
+```
+
+The incident is resolved by backend lifecycle rules during approval. A missing
+plan should return `404`; an approved, rejected, or already resolved incident
+approval should return `409` without applying a second resolution.
+
 AI resolution plan history smoke check:
 
 ```bash
@@ -497,6 +527,7 @@ Alerts:
 | `/organizations/{organizationId}/incidents/{incidentId}/corrective-action` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET`, `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans/{planId}/approve` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
 | `/organizations/{organizationId}/notifications` | `GET` |
 

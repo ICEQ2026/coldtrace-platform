@@ -9,6 +9,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCo
 import com.acme.coldtrace.platform.alerts.domain.model.commands.EscalateIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.RegisterIncidentCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentWithCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.domain.repositories.NotificationRepository;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
@@ -293,6 +294,58 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
         emitNotification(resolvedIncident, Notification.incidentResolved(resolvedIncident));
 
         log.info("Incident resolved: id={}, organizationId={}",
+                resolvedIncident.getId(), resolvedIncident.getOrganizationId());
+        return Result.success(resolvedIncident);
+    }
+
+    /**
+     * Handles resolution of an incident with final operator-approved corrective action.
+     *
+     * @param command combined corrective action and resolution command
+     * @return success with resolved incident or failure with command error
+     */
+    @Override
+    @Transactional
+    public Result<Incident, IncidentCommandFailure> handle(ResolveIncidentWithCorrectiveActionCommand command) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
+            log.warn("Organization not found for incident approval resolution: organizationId={}",
+                    command.organizationId());
+            return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
+        }
+
+        var incident = incidentRepository.findByIdAndOrganizationId(command.incidentId(), command.organizationId());
+        if (incident.isEmpty()) {
+            log.warn("Incident not found for approval resolution: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.IncidentNotFound());
+        }
+        if (incident.get().isResolved()) {
+            log.warn("Incident already resolved before approval resolution: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.AlreadyResolved());
+        }
+        if (!incident.get().isOpen() && !incident.get().isAcknowledged()) {
+            log.warn("Invalid approval resolution transition: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.InvalidLifecycleTransition());
+        }
+
+        incident.get().registerCorrectiveAction(new RegisterIncidentCorrectiveActionCommand(
+                command.organizationId(),
+                command.incidentId(),
+                command.correctiveAction(),
+                command.resolvedBy()
+        ));
+        incident.get().resolve(new ResolveIncidentCommand(
+                command.organizationId(),
+                command.incidentId(),
+                command.resolvedBy(),
+                command.resolutionNotes()
+        ));
+        var resolvedIncident = incidentRepository.save(incident.get());
+        emitNotification(resolvedIncident, Notification.incidentResolved(resolvedIncident));
+
+        log.info("Incident resolved from approved AI plan: id={}, organizationId={}",
                 resolvedIncident.getId(), resolvedIncident.getOrganizationId());
         return Result.success(resolvedIncident);
     }

@@ -11,6 +11,7 @@ public sealed interface AiResolutionPlanCommandFailure
         permits AiResolutionPlanCommandFailure.OrganizationNotFound,
         AiResolutionPlanCommandFailure.IncidentNotFound,
         AiResolutionPlanCommandFailure.IncidentNotActive,
+        AiResolutionPlanCommandFailure.IncidentAlreadyResolved,
         AiResolutionPlanCommandFailure.PlanNotFound,
         AiResolutionPlanCommandFailure.PlanAlreadyDecided,
         AiResolutionPlanCommandFailure.ProviderFailure,
@@ -44,6 +45,14 @@ public sealed interface AiResolutionPlanCommandFailure
         @Override
         public String messageKey() {
             return "alerts.ai-resolution-plan.error.incident-not-active";
+        }
+    }
+
+    /** Incident was resolved before the pending plan could be approved. */
+    record IncidentAlreadyResolved() implements AiResolutionPlanCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.ai-resolution-plan.error.incident-already-resolved";
         }
     }
 
