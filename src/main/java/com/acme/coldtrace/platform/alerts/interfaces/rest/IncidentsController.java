@@ -432,10 +432,7 @@ public class IncidentsController {
             @ApiResponse(responseCode = "409", description = "Plan already decided or incident already resolved",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping({
-            "/{incidentId}/ai-resolution-plans/{planId}/approvals",
-            "/{incidentId}/ai-resolution-plans/{planId}/approve"
-    })
+    @PostMapping("/{incidentId}/ai-resolution-plans/{planId}/approvals")
     public ResponseEntity<?> approveAiResolutionPlan(
             @Parameter(name = "organizationId", description = "Organization identifier", required = true)
             @PathVariable Long organizationId,
