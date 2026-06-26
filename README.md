@@ -171,6 +171,15 @@ disabled, unsupported, times out, or returns invalid structured output, the AI
 application service returns a controlled failure instead of exposing raw model
 text.
 
+AI report summaries are generated on demand from persisted report metrics and
+related evidence. They are advisory and do not mutate source report metrics:
+
+```bash
+curl -X POST \
+  http://localhost:8080/api/v1/organizations/{organizationId}/reports/{reportId}/ai-summary \
+  -H "Authorization: Bearer <jwt>"
+```
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
