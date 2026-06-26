@@ -230,6 +230,10 @@ Acceptance criteria:
   - Given `GET /api/v1/organizations/{organizationId}/reports`
   - When reports exist
   - Then the API returns only reports for that organization.
+- Scenario: Generate AI report summary
+  - Given an existing generated report
+  - When `POST /api/v1/organizations/{organizationId}/reports/{reportId}/ai-summary` is called
+  - Then the API returns a structured advisory summary based on persisted report metrics and related evidence without changing the report.
 
 ---
 

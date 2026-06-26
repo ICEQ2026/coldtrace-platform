@@ -1,12 +1,16 @@
 package com.acme.coldtrace.platform.reports.interfaces.rest;
 
+import com.acme.coldtrace.platform.reports.application.commandservices.ReportAiSummaryCommandService;
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportCommandService;
+import com.acme.coldtrace.platform.reports.domain.model.commands.GenerateReportAiSummaryCommand;
 import com.acme.coldtrace.platform.reports.application.queryservices.ReportQueryService;
 import com.acme.coldtrace.platform.reports.domain.model.queries.GetReportByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.reports.domain.model.queries.GetReportsByOrganizationIdQuery;
 import com.acme.coldtrace.platform.reports.interfaces.rest.resources.GenerateReportResource;
+import com.acme.coldtrace.platform.reports.interfaces.rest.resources.ReportAiSummaryResource;
 import com.acme.coldtrace.platform.reports.interfaces.rest.resources.ReportResource;
 import com.acme.coldtrace.platform.reports.interfaces.rest.transform.GenerateReportCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.reports.interfaces.rest.transform.ResponseEntityFromReportAiSummaryCommandResultAssembler;
 import com.acme.coldtrace.platform.reports.interfaces.rest.transform.ResponseEntityFromReportCommandResultAssembler;
 import com.acme.coldtrace.platform.reports.interfaces.rest.transform.ResponseEntityFromReportQueryResultAssembler;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,15 +49,18 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @RequestMapping(value = "/organizations/{organizationId}/reports", produces = APPLICATION_JSON_VALUE)
 @Tag(name = "Reports", description = "Endpoints for generated operational reports")
 public class ReportsController {
+    private final ReportAiSummaryCommandService reportAiSummaryCommandService;
     private final ReportCommandService reportCommandService;
     private final ReportQueryService reportQueryService;
     private final MessageSource messageSource;
 
     public ReportsController(
+            ReportAiSummaryCommandService reportAiSummaryCommandService,
             ReportCommandService reportCommandService,
             ReportQueryService reportQueryService,
             MessageSource messageSource
     ) {
+        this.reportAiSummaryCommandService = reportAiSummaryCommandService;
         this.reportCommandService = reportCommandService;
         this.reportQueryService = reportQueryService;
         this.messageSource = messageSource;
@@ -110,6 +117,47 @@ public class ReportsController {
         log.debug("GET /organizations/{}/reports/{}", organizationId, reportId);
         var result = reportQueryService.handle(new GetReportByIdAndOrganizationIdQuery(organizationId, reportId));
         return ResponseEntityFromReportQueryResultAssembler.toResponseEntityFromReportResult(result, messageSource);
+    }
+
+    /**
+     * Generates an advisory AI summary for one existing report.
+     *
+     * @param organizationId organization identifier
+     * @param reportId report identifier
+     * @return response entity containing the generated advisory summary
+     */
+    @Operation(summary = "Generate a report AI summary",
+            description = "Loads persisted report metrics and related evidence, then returns a structured advisory AI summary without mutating the source report")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "AI report summary generated",
+                    content = @Content(schema = @Schema(implementation = ReportAiSummaryResource.class))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid identifier",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or report not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "500", description = "Report context could not be prepared",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "502", description = "AI provider returned invalid structured output",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "503", description = "AI provider is unavailable or disabled",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "504", description = "AI provider timed out",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{reportId}/ai-summary")
+    public ResponseEntity<?> generateReportAiSummary(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "reportId", description = "Report identifier", required = true)
+            @PathVariable Long reportId) {
+        log.debug("POST /organizations/{}/reports/{}/ai-summary", organizationId, reportId);
+        var summary = reportAiSummaryCommandService.handle(
+                new GenerateReportAiSummaryCommand(organizationId, reportId)
+        );
+        return ResponseEntityFromReportAiSummaryCommandResultAssembler.toResponseEntityFromGenerationResult(
+                summary,
+                messageSource
+        );
     }
 
     /**
