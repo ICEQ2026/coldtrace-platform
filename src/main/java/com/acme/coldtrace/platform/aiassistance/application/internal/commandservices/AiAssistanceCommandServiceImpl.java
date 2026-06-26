@@ -53,7 +53,8 @@ public class AiAssistanceCommandServiceImpl implements AiAssistanceCommandServic
             {dashboardContext}
 
             Requirements:
-            - Summarize the situation, identify metric-level insights, risks, recommended actions, and uncertainty notes.
+            - Include summary, attentionLevel, metric-level insights, risks, recommended actions, and uncertainty notes.
+            - The attentionLevel must be one concise operational label such as stable, attention recommended, or critical attention.
             - Do not invent source data that is absent from the context.
 
             {format}

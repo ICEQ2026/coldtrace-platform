@@ -180,6 +180,19 @@ curl -X POST \
   -H "Authorization: Bearer <jwt>"
 ```
 
+AI dashboard interpretations are generated on demand from persisted
+organization metrics, readings, incidents, reports, and available maintenance
+evidence. The request body is optional and can include a specific operator
+question:
+
+```bash
+curl -X POST \
+  http://localhost:8080/api/v1/organizations/{organizationId}/dashboard/ai-interpretation \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What should I review first?"}'
+```
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -577,6 +590,13 @@ Reports:
 | Path | Operations |
 | --- | --- |
 | `/organizations/{organizationId}/reports` | `GET`, `GET /{reportId}`, `POST` |
+| `/organizations/{organizationId}/reports/{reportId}/ai-summary` | `POST` |
+
+AI assistance:
+
+| Path | Operations |
+| --- | --- |
+| `/organizations/{organizationId}/dashboard/ai-interpretation` | `POST` |
 
 Maintenance management:
 
