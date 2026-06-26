@@ -432,7 +432,10 @@ public class IncidentsController {
             @ApiResponse(responseCode = "409", description = "Plan already decided or incident already resolved",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    @PostMapping("/{incidentId}/ai-resolution-plans/{planId}/approve")
+    @PostMapping({
+            "/{incidentId}/ai-resolution-plans/{planId}/approvals",
+            "/{incidentId}/ai-resolution-plans/{planId}/approve"
+    })
     public ResponseEntity<?> approveAiResolutionPlan(
             @Parameter(name = "organizationId", description = "Organization identifier", required = true)
             @PathVariable Long organizationId,
@@ -441,7 +444,7 @@ public class IncidentsController {
             @Parameter(name = "planId", description = "AI resolution plan identifier", required = true)
             @PathVariable Long planId,
             @Valid @RequestBody ApproveAiResolutionPlanResource resource) {
-        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans/{}/approve",
+        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans/{}/approvals",
                 organizationId, incidentId, planId);
         var command = ApproveAiResolutionPlanCommandFromResourceAssembler.toCommandFromResource(
                 resource,

@@ -321,7 +321,7 @@ that belongs to an open or acknowledged incident:
 
 ```bash
 curl -i -X POST \
-  http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans/1/approve \
+  http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans/1/approvals \
   -H 'Content-Type: application/json' \
   -d '{
     "approvedBy": "operations.manager@coldtrace.test",
@@ -527,7 +527,7 @@ Alerts:
 | `/organizations/{organizationId}/incidents/{incidentId}/corrective-action` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET`, `POST` |
-| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans/{planId}/approve` | `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans/{planId}/approvals` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
 | `/organizations/{organizationId}/notifications` | `GET` |
 
