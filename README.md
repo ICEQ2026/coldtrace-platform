@@ -346,6 +346,33 @@ The incident is resolved by backend lifecycle rules during approval. A missing
 plan should return `404`; an approved, rejected, or already resolved incident
 approval should return `409` without applying a second resolution.
 
+AI resolution plan rejection smoke check, replacing the ids with a pending plan
+that belongs to an open or acknowledged incident:
+
+```bash
+curl -i -X POST \
+  http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans/1/rejections \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "rejectedBy": "operations.manager@coldtrace.test",
+    "rejectionReason": "Plan requires on-site compressor inspection before closure."
+  }'
+```
+
+Expected result for a valid pending plan:
+
+```text
+HTTP/1.1 200
+{
+  "status": "rejected",
+  "rejectedBy": "operations.manager@coldtrace.test",
+  "rejectionReason": "..."
+}
+```
+
+The incident remains open or acknowledged after rejection. A rejected or
+approved plan should return `409` if a second decision is attempted.
+
 AI resolution plan history smoke check:
 
 ```bash
@@ -528,6 +555,7 @@ Alerts:
 | `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET`, `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans/{planId}/approvals` | `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans/{planId}/rejections` | `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
 | `/organizations/{organizationId}/notifications` | `GET` |
 
