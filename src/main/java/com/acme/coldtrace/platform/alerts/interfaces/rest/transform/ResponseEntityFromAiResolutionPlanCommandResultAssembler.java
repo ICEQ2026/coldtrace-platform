@@ -41,6 +41,23 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
         );
     }
 
+    /**
+     * Converts an AI resolution plan lifecycle result into an HTTP response.
+     *
+     * @param result AI resolution plan command result
+     * @param messageSource message source for localized failure details
+     * @return 200 response on success or error response on failure
+     */
+    public static ResponseEntity<?> toResponseEntityFromLifecycleResult(
+            Result<AiResolutionPlan, AiResolutionPlanCommandFailure> result,
+            MessageSource messageSource
+    ) {
+        return result.fold(
+                plan -> ResponseEntity.ok(AiResolutionPlanResourceFromEntityAssembler.toResourceFromEntity(plan)),
+                failure -> toFailureResponse(failure, messageSource)
+        );
+    }
+
     private static ResponseEntity<?> toFailureResponse(
             AiResolutionPlanCommandFailure failure,
             MessageSource messageSource
@@ -64,6 +81,7 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
             return HttpStatus.NOT_FOUND;
         }
         if (failure instanceof AiResolutionPlanCommandFailure.IncidentNotActive ||
+                failure instanceof AiResolutionPlanCommandFailure.IncidentAlreadyResolved ||
                 failure instanceof AiResolutionPlanCommandFailure.PlanAlreadyDecided) {
             return HttpStatus.CONFLICT;
         }

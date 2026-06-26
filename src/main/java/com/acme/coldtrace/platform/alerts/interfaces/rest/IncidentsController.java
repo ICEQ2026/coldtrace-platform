@@ -12,6 +12,7 @@ import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentsByOrg
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsByIncidentIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.AiResolutionPlanResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.AcknowledgeIncidentResource;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.ApproveAiResolutionPlanResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.CreateIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.EscalateIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.IncidentResource;
@@ -19,6 +20,7 @@ import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.Notification
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.RegisterIncidentCorrectiveActionResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.ResolveIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.AcknowledgeIncidentCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ApproveAiResolutionPlanCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.CreateIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.EscalateIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.RegisterIncidentCorrectiveActionCommandFromResourceAssembler;
@@ -399,6 +401,56 @@ public class IncidentsController {
                 new GenerateAiResolutionPlanCommand(organizationId, incidentId)
         );
         return ResponseEntityFromAiResolutionPlanCommandResultAssembler.toResponseEntityFromCreateResult(
+                plan,
+                messageSource
+        );
+    }
+
+    /**
+     * Approves an AI resolution plan and resolves its incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @param planId AI resolution plan identifier
+     * @param resource approval request resource
+     * @return response entity containing the approved AI resolution plan
+     */
+    @Operation(
+            summary = "Approve an incident AI resolution plan",
+            description = "Approves a pending AI plan, stores final operator notes and resolves the incident through backend lifecycle rules",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "AI resolution plan approval request",
+                    content = @Content(schema = @Schema(implementation = ApproveAiResolutionPlanResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "AI resolution plan approved and incident resolved",
+                    content = @Content(schema = @Schema(implementation = AiResolutionPlanResource.class))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid approval request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization, incident, or AI plan not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Plan already decided or incident already resolved",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{incidentId}/ai-resolution-plans/{planId}/approvals")
+    public ResponseEntity<?> approveAiResolutionPlan(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId,
+            @Parameter(name = "planId", description = "AI resolution plan identifier", required = true)
+            @PathVariable Long planId,
+            @Valid @RequestBody ApproveAiResolutionPlanResource resource) {
+        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans/{}/approvals",
+                organizationId, incidentId, planId);
+        var command = ApproveAiResolutionPlanCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                incidentId,
+                planId
+        );
+        var plan = aiResolutionPlanCommandService.handle(command);
+        return ResponseEntityFromAiResolutionPlanCommandResultAssembler.toResponseEntityFromLifecycleResult(
                 plan,
                 messageSource
         );

@@ -6,12 +6,15 @@ import com.acme.coldtrace.platform.aiassistance.application.model.IncidentResolu
 import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateIncidentResolutionPlanDraftCommand;
 import com.acme.coldtrace.platform.alerts.application.commandservices.AiResolutionPlanCommandFailure;
 import com.acme.coldtrace.platform.alerts.application.commandservices.AiResolutionPlanCommandService;
+import com.acme.coldtrace.platform.alerts.application.commandservices.IncidentCommandFailure;
+import com.acme.coldtrace.platform.alerts.application.commandservices.IncidentCommandService;
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.AiResolutionPlan;
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.Incident;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ApproveAiResolutionPlanCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateAiResolutionPlanCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.GenerateAiResolutionPlanCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.RejectAiResolutionPlanCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentWithCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.valueobjects.AiResolutionPlanStep;
 import com.acme.coldtrace.platform.alerts.domain.repositories.AiResolutionPlanRepository;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
@@ -54,6 +57,7 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
 
     private final AiResolutionPlanRepository aiResolutionPlanRepository;
     private final IncidentRepository incidentRepository;
+    private final IncidentCommandService incidentCommandService;
     private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final MonitoringContextFacade monitoringContextFacade;
@@ -64,6 +68,7 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
     public AiResolutionPlanCommandServiceImpl(
             AiResolutionPlanRepository aiResolutionPlanRepository,
             IncidentRepository incidentRepository,
+            IncidentCommandService incidentCommandService,
             IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
             MonitoringContextFacade monitoringContextFacade,
@@ -73,6 +78,7 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
     ) {
         this.aiResolutionPlanRepository = aiResolutionPlanRepository;
         this.incidentRepository = incidentRepository;
+        this.incidentCommandService = incidentCommandService;
         this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.monitoringContextFacade = monitoringContextFacade;
@@ -168,6 +174,17 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
         }
 
         var pendingPlan = plan.success().orElseThrow();
+        var incidentResolution = incidentCommandService.handle(new ResolveIncidentWithCorrectiveActionCommand(
+                command.organizationId(),
+                command.incidentId(),
+                command.approvedBy(),
+                command.finalCorrectiveAction(),
+                command.finalResolutionNotes()
+        ));
+        if (incidentResolution.isFailure()) {
+            return Result.failure(toAiResolutionPlanFailure(incidentResolution.failure().orElseThrow()));
+        }
+
         pendingPlan.approve(command);
         var approvedPlan = aiResolutionPlanRepository.save(pendingPlan);
         log.info("AI resolution plan approved: id={}, organizationId={}, incidentId={}",
@@ -195,6 +212,19 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
         log.info("AI resolution plan rejected: id={}, organizationId={}, incidentId={}",
                 rejectedPlan.getId(), rejectedPlan.getOrganizationId(), rejectedPlan.getIncidentId());
         return Result.success(rejectedPlan);
+    }
+
+    private AiResolutionPlanCommandFailure toAiResolutionPlanFailure(IncidentCommandFailure failure) {
+        if (failure instanceof IncidentCommandFailure.OrganizationNotFound) {
+            return new AiResolutionPlanCommandFailure.OrganizationNotFound();
+        }
+        if (failure instanceof IncidentCommandFailure.IncidentNotFound) {
+            return new AiResolutionPlanCommandFailure.IncidentNotFound();
+        }
+        if (failure instanceof IncidentCommandFailure.AlreadyResolved) {
+            return new AiResolutionPlanCommandFailure.IncidentAlreadyResolved();
+        }
+        return new AiResolutionPlanCommandFailure.IncidentNotActive();
     }
 
     private Result<String, AiResolutionPlanCommandFailure> serializeContext(IncidentPlanContext context) {
