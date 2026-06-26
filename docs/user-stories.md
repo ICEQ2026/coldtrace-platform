@@ -281,6 +281,35 @@ Acceptance criteria:
 
 ---
 
+### TS-AI002 - Interpret Dashboard Metrics with AI
+
+As a frontend developer, I want a backend-owned dashboard AI interpretation endpoint so that the dashboard assistant can explain KPIs and charts without calling an AI provider directly from the browser.
+
+Status: implemented Sprint 4 backend contract.
+
+Contract:
+
+- `POST /api/v1/organizations/{organizationId}/dashboard/ai-interpretation`
+- Request body is optional and can include `question`.
+- Success returns `overallReading`, `attentionLevel`, `metricInsights`, `risks`, `recommendedActions`, `uncertaintyNotes`, `sourceMetrics`, `modelProvider`, `modelName`, and `generatedAt`.
+
+Acceptance criteria:
+
+- Scenario: Generate general dashboard interpretation
+  - Given an organization has dashboard evidence such as readings, incidents, reports, and maintenance records
+  - When the client requests a dashboard AI interpretation
+  - Then the API returns a structured advisory interpretation based on backend-provided context.
+- Scenario: Ask a dashboard question
+  - Given the operator submits a suggested or free-form dashboard question
+  - When the backend generates the interpretation
+  - Then the answer stays grounded in source metrics and uncertainty notes.
+- Scenario: Protect provider access
+  - Given the frontend opens the dashboard assistant
+  - When it needs an AI answer
+  - Then it calls ColdTrace backend and never sends provider keys or direct model requests from the browser.
+
+---
+
 ### TS-BILL001 - Manage Plans, Subscriptions, and Stripe Checkout
 
 As a frontend developer, I want backend-owned subscription plan and billing APIs so that plan limits are enforced outside the frontend.
