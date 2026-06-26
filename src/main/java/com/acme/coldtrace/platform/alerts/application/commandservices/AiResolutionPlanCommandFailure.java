@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.alerts.application.commandservices;
 
+import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
+
 /**
  * Failure types for AI resolution plan command execution.
  *
@@ -8,8 +10,11 @@ package com.acme.coldtrace.platform.alerts.application.commandservices;
 public sealed interface AiResolutionPlanCommandFailure
         permits AiResolutionPlanCommandFailure.OrganizationNotFound,
         AiResolutionPlanCommandFailure.IncidentNotFound,
+        AiResolutionPlanCommandFailure.IncidentNotActive,
         AiResolutionPlanCommandFailure.PlanNotFound,
-        AiResolutionPlanCommandFailure.PlanAlreadyDecided {
+        AiResolutionPlanCommandFailure.PlanAlreadyDecided,
+        AiResolutionPlanCommandFailure.ProviderFailure,
+        AiResolutionPlanCommandFailure.ContextAssemblyFailed {
     /** @return message key to resolve through i18n */
     String messageKey();
 
@@ -34,6 +39,14 @@ public sealed interface AiResolutionPlanCommandFailure
         }
     }
 
+    /** Incident cannot receive generated plans in its current lifecycle state. */
+    record IncidentNotActive() implements AiResolutionPlanCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.ai-resolution-plan.error.incident-not-active";
+        }
+    }
+
     /** AI resolution plan not found failure. */
     record PlanNotFound() implements AiResolutionPlanCommandFailure {
         @Override
@@ -47,6 +60,27 @@ public sealed interface AiResolutionPlanCommandFailure
         @Override
         public String messageKey() {
             return "alerts.ai-resolution-plan.error.plan-already-decided";
+        }
+    }
+
+    /** AI provider failure while generating structured plan content. */
+    record ProviderFailure(AiAssistanceFailure failure) implements AiResolutionPlanCommandFailure {
+        @Override
+        public String messageKey() {
+            return failure.messageKey();
+        }
+
+        @Override
+        public Object[] args() {
+            return failure.args();
+        }
+    }
+
+    /** Backend context could not be serialized for the provider prompt. */
+    record ContextAssemblyFailed() implements AiResolutionPlanCommandFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.ai-resolution-plan.error.context-unavailable";
         }
     }
 }

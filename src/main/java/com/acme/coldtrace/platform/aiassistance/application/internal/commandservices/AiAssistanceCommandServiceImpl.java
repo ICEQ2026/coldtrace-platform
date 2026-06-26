@@ -39,8 +39,8 @@ public class AiAssistanceCommandServiceImpl implements AiAssistanceCommandServic
             {incidentContext}
 
             Requirements:
-            - Include probable cause, ordered recommended steps, corrective-action draft, resolution-notes draft,
-              escalation recommendation, required evidence, and uncertainty notes.
+            - Include summary, probable cause, ordered recommended steps, corrective-action draft,
+              resolution-notes draft, escalation recommendation, required evidence, and uncertainty notes.
             - Keep all recommendations advisory until an operator approves them.
 
             {format}

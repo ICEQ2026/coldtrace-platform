@@ -291,27 +291,56 @@ Package the backend:
 ./mvnw -q -DskipTests package
 ```
 
-AI resolution plan history smoke check, replacing the ids with an incident that
-belongs to the organization:
+AI resolution plan generation smoke check, replacing the ids with an open or
+acknowledged incident that belongs to the organization:
 
 ```bash
-curl -i http://localhost:8080/organizations/1/incidents/1/ai-resolution-plans
+curl -i -X POST http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans
 ```
 
-Expected result for an existing incident with no generated plans yet:
+Expected result for an existing active incident when the configured AI provider
+returns valid structured output:
+
+```text
+HTTP/1.1 201
+{
+  "status": "pending",
+  "summary": "...",
+  "probableCause": "...",
+  "recommendedSteps": [...],
+  "correctiveActionDraft": "...",
+  "resolutionNotesDraft": "..."
+}
+```
+
+The generated plan is persisted as pending and the incident remains open or
+acknowledged until a later human approval flow resolves it.
+
+AI resolution plan history smoke check:
+
+```bash
+curl -i http://localhost:8080/api/v1/organizations/1/incidents/1/ai-resolution-plans
+```
+
+Expected result for an existing incident with generated plans:
 
 ```text
 HTTP/1.1 200
-[]
+[
+  {
+    "status": "pending"
+  }
+]
 ```
 
 An unknown incident or an incident from another organization should return
-`404`.
+`404`. A resolved incident should return `409` for generation. Provider
+timeouts, unavailable providers, and invalid structured output should return
+`504`, `503`, and `502` respectively without creating partial plans.
 
-TS18 does not introduce public AI product endpoints. AI smoke validation for
-this foundation ticket is packaging plus starting the backend with either the
-local Ollama configuration or deployed OpenAI environment variables. Later AI
-API tickets should add endpoint-level Swagger and curl checks.
+AI smoke validation for this ticket requires packaging plus starting the backend
+with either the local Ollama configuration or deployed OpenAI environment
+variables.
 
 The current repository does not add automated project tests yet, so release
 verification is done with packaging, Swagger/OpenAPI checks, and API smoke flows
@@ -467,9 +496,13 @@ Alerts:
 | `/organizations/{organizationId}/incidents/{incidentId}/escalation` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/corrective-action` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
-| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET` |
+| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET`, `POST` |
 | `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
 | `/organizations/{organizationId}/notifications` | `GET` |
+
+The incident routes are also available with the `/api/v1` prefix for the Sprint
+4 AI contract, for example
+`/api/v1/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans`.
 
 Reports:
 

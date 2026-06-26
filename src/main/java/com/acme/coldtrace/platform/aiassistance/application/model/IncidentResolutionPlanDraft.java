@@ -12,6 +12,7 @@ import java.util.List;
 /**
  * Structured advisory plan for an incident. It does not mutate incident state.
  *
+ * @param summary concise reasoning summary for operator review
  * @param probableCause probable operational cause inferred from backend context
  * @param recommendedSteps ordered advisory steps
  * @param correctiveActionDraft draft corrective action text
@@ -22,6 +23,7 @@ import java.util.List;
  * @since 1.0
  */
 @JsonPropertyOrder({
+        "summary",
         "probableCause",
         "recommendedSteps",
         "correctiveActionDraft",
@@ -31,6 +33,7 @@ import java.util.List;
         "uncertaintyNotes"
 })
 public record IncidentResolutionPlanDraft(
+        @NotBlank @Size(max = 400) String summary,
         @NotBlank @Size(max = 320) String probableCause,
         @NotEmpty @Size(max = 8) List<@Valid ResolutionPlanStepDraft> recommendedSteps,
         @NotBlank @Size(max = 600) String correctiveActionDraft,
