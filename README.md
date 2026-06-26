@@ -291,6 +291,23 @@ Package the backend:
 ./mvnw -q -DskipTests package
 ```
 
+AI resolution plan history smoke check, replacing the ids with an incident that
+belongs to the organization:
+
+```bash
+curl -i http://localhost:8080/organizations/1/incidents/1/ai-resolution-plans
+```
+
+Expected result for an existing incident with no generated plans yet:
+
+```text
+HTTP/1.1 200
+[]
+```
+
+An unknown incident or an incident from another organization should return
+`404`.
+
 TS18 does not introduce public AI product endpoints. AI smoke validation for
 this foundation ticket is packaging plus starting the backend with either the
 local Ollama configuration or deployed OpenAI environment variables. Later AI
@@ -450,6 +467,7 @@ Alerts:
 | `/organizations/{organizationId}/incidents/{incidentId}/escalation` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/corrective-action` | `PATCH` |
 | `/organizations/{organizationId}/incidents/{incidentId}/resolutions` | `POST` |
+| `/organizations/{organizationId}/incidents/{incidentId}/ai-resolution-plans` | `GET` |
 | `/organizations/{organizationId}/incidents/{incidentId}/notifications` | `GET` |
 | `/organizations/{organizationId}/notifications` | `GET` |
 
