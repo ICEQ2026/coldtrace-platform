@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.iam.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.application.commandservices.OrganizationSignUpCommandFailure;
 import com.acme.coldtrace.platform.iam.application.commandservices.OrganizationSignUpCommandResult;
 import com.acme.coldtrace.platform.iam.application.commandservices.OrganizationSignUpCommandService;
@@ -30,17 +31,20 @@ public class OrganizationSignUpCommandServiceImpl implements OrganizationSignUpC
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final HashingService hashingService;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public OrganizationSignUpCommandServiceImpl(
             OrganizationRepository organizationRepository,
             UserRepository userRepository,
             RoleRepository roleRepository,
-            HashingService hashingService
+            HashingService hashingService,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.hashingService = hashingService;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -75,6 +79,7 @@ public class OrganizationSignUpCommandServiceImpl implements OrganizationSignUpC
         }
 
         var organization = organizationRepository.save(new Organization(command.toCreateOrganizationCommand()));
+        subscriptionBillingContextFacade.initializeBaseSubscriptionForOrganization(organization.getId());
         var userCommand = command.toCreateUserCommand(organization.getId(), initialRole.get().getId());
         var user = userRepository.save(new User(userCommand, hashingService.encode(userCommand.password())));
 

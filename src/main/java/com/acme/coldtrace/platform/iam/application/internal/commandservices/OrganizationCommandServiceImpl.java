@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.iam.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.application.commandservices.OrganizationCommandFailure;
 import com.acme.coldtrace.platform.iam.application.commandservices.OrganizationCommandService;
 import com.acme.coldtrace.platform.iam.domain.model.aggregates.Organization;
@@ -21,9 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrganizationCommandServiceImpl implements OrganizationCommandService {
     private final OrganizationRepository organizationRepository;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
-    public OrganizationCommandServiceImpl(OrganizationRepository organizationRepository) {
+    public OrganizationCommandServiceImpl(
+            OrganizationRepository organizationRepository,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
+    ) {
         this.organizationRepository = organizationRepository;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -46,6 +52,7 @@ public class OrganizationCommandServiceImpl implements OrganizationCommandServic
             return Result.failure(new OrganizationCommandFailure.DuplicateTaxId());
         }
         var organization = organizationRepository.save(new Organization(command));
+        subscriptionBillingContextFacade.initializeBaseSubscriptionForOrganization(organization.getId());
         log.info("Organization created: id={}, contactEmail={}", organization.getId(), organization.getContactEmail());
         return Result.success(organization);
     }

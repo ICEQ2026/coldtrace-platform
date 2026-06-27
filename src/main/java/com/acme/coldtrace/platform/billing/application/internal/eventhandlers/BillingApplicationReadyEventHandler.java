@@ -1,6 +1,8 @@
 package com.acme.coldtrace.platform.billing.application.internal.eventhandlers;
 
+import com.acme.coldtrace.platform.billing.application.commandservices.OrganizationSubscriptionCommandService;
 import com.acme.coldtrace.platform.billing.application.commandservices.SubscriptionPlanCommandService;
+import com.acme.coldtrace.platform.billing.domain.model.commands.SeedBaseOrganizationSubscriptionsCommand;
 import com.acme.coldtrace.platform.billing.domain.model.commands.SeedSubscriptionPlansCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -17,9 +19,14 @@ import java.sql.Timestamp;
 @Service
 @Slf4j
 public class BillingApplicationReadyEventHandler {
+    private final OrganizationSubscriptionCommandService organizationSubscriptionCommandService;
     private final SubscriptionPlanCommandService subscriptionPlanCommandService;
 
-    public BillingApplicationReadyEventHandler(SubscriptionPlanCommandService subscriptionPlanCommandService) {
+    public BillingApplicationReadyEventHandler(
+            OrganizationSubscriptionCommandService organizationSubscriptionCommandService,
+            SubscriptionPlanCommandService subscriptionPlanCommandService
+    ) {
+        this.organizationSubscriptionCommandService = organizationSubscriptionCommandService;
         this.subscriptionPlanCommandService = subscriptionPlanCommandService;
     }
 
@@ -34,6 +41,7 @@ public class BillingApplicationReadyEventHandler {
         log.info("Starting to verify if subscription plan seeding is needed for {} at {}",
                 applicationName, currentTimestamp());
         subscriptionPlanCommandService.handle(new SeedSubscriptionPlansCommand());
+        organizationSubscriptionCommandService.handle(new SeedBaseOrganizationSubscriptionsCommand());
         log.info("Subscription plan seeding verification finished for {} at {}",
                 applicationName, currentTimestamp());
     }

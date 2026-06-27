@@ -1,5 +1,7 @@
 package com.acme.coldtrace.platform.iam.interfaces.acl;
 
+import java.util.List;
+
 /**
  * Published anti-corruption facade for the IAM bounded context.
  * <p>
@@ -26,4 +28,19 @@ public interface IamContextFacade {
      * @return {@code true} when the user belongs to the organization
      */
     boolean userExistsByIdAndOrganizationId(Long organizationId, Long userId);
+
+    /**
+     * Counts users that belong to an organization.
+     *
+     * @param organizationId organization identifier
+     * @return number of users in the organization
+     */
+    int countUsersByOrganizationId(Long organizationId);
+
+    /**
+     * Fetches organization identifiers known by IAM.
+     *
+     * @return organization identifiers
+     */
+    List<Long> fetchOrganizationIds();
 }
