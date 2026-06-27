@@ -5,6 +5,8 @@ import com.acme.coldtrace.platform.iam.domain.repositories.UserRepository;
 import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * Application-layer implementation of {@link IamContextFacade}.
  *
@@ -39,5 +41,26 @@ public class IamContextFacadeImpl implements IamContextFacade {
         return organizationId != null &&
                 userId != null &&
                 userRepository.findByIdAndOrganizationId(userId, organizationId).isPresent();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countUsersByOrganizationId(Long organizationId) {
+        if (organizationId == null) {
+            return 0;
+        }
+        return userRepository.findAllByOrganizationId(organizationId).size();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> fetchOrganizationIds() {
+        return organizationRepository.findAll().stream()
+                .map(organization -> organization.getId())
+                .toList();
     }
 }

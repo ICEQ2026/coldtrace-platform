@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.iam.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.application.commandservices.AuthenticatedUserCommandResult;
 import com.acme.coldtrace.platform.iam.application.commandservices.SocialOrganizationSignUpCommandService;
 import com.acme.coldtrace.platform.iam.application.internal.outboundservices.hashing.HashingService;
@@ -47,6 +48,7 @@ public class SocialOrganizationSignUpCommandServiceImpl implements SocialOrganiz
     private final RoleRepository roleRepository;
     private final HashingService hashingService;
     private final TokenService tokenService;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public SocialOrganizationSignUpCommandServiceImpl(
             ExternalIdentityProviderService externalIdentityProviderService,
@@ -55,7 +57,8 @@ public class SocialOrganizationSignUpCommandServiceImpl implements SocialOrganiz
             UserRepository userRepository,
             RoleRepository roleRepository,
             HashingService hashingService,
-            TokenService tokenService
+            TokenService tokenService,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.externalIdentityProviderService = externalIdentityProviderService;
         this.externalIdentityRepository = externalIdentityRepository;
@@ -64,6 +67,7 @@ public class SocialOrganizationSignUpCommandServiceImpl implements SocialOrganiz
         this.roleRepository = roleRepository;
         this.hashingService = hashingService;
         this.tokenService = tokenService;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -127,6 +131,7 @@ public class SocialOrganizationSignUpCommandServiceImpl implements SocialOrganiz
                     null,
                     providerIdentity.email()
             )));
+            subscriptionBillingContextFacade.initializeBaseSubscriptionForOrganization(organization.getId());
             var nameParts = splitName(command.fullName());
             var userCommand = new CreateUserCommand(
                     nameParts.firstName(),

@@ -59,12 +59,28 @@ public interface AssetManagementContextFacade {
     List<IoTDeviceSnapshot> fetchAssignedIoTDevices(Long organizationId, Long assetId);
 
     /**
+     * Counts locations for an organization.
+     *
+     * @param organizationId organization identifier
+     * @return number of locations in the organization
+     */
+    int countLocationsByOrganizationId(Long organizationId);
+
+    /**
      * Counts assets for an organization.
      *
      * @param organizationId organization identifier
      * @return number of assets in the organization
      */
     int countAssetsByOrganizationId(Long organizationId);
+
+    /**
+     * Counts IoT devices for an organization.
+     *
+     * @param organizationId organization identifier
+     * @return number of IoT devices in the organization
+     */
+    int countIotDevicesByOrganizationId(Long organizationId);
 
     /**
      * Asset data published to other bounded contexts.

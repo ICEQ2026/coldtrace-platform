@@ -217,6 +217,28 @@ export STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
 export STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
 ```
 
+## Organization Subscription and Entitlements
+
+TS25 exposes the current subscription and backend-computed entitlements for one
+organization:
+
+```bash
+curl -i http://localhost:8080/api/v1/organizations/1/subscription \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Expected result for an existing organization:
+
+- `200 OK` with `status`, `provider`, the current `plan`, supported `usage`
+  counters, and an `entitlements` list.
+- New organizations are initialized on the Base plan during organization
+  creation or sign-up.
+- Existing organizations without a subscription are backfilled on application
+  startup; if a subscription is still missing, the API returns `404`.
+- Unknown organizations return `404`.
+- If the stored plan code is not present in the plan catalog, the API returns a
+  controlled `404` for the missing plan.
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -630,11 +652,14 @@ Billing:
 | Path | Operations |
 | --- | --- |
 | `/api/v1/subscription-plans` | `GET` |
+| `/api/v1/organizations/{organizationId}/subscription` | `GET` |
 
 The subscription plan catalog is public and read-only so the landing page can
 show the same Base, Operations, and Compliance AI definitions as the app. The
 same route is also available without the `/api/v1` prefix for local API
-compatibility.
+compatibility. Organization subscription responses are protected and include
+the current plan, subscription status, supported usage counters, and backend
+entitlement decisions for limits and paid features.
 
 Maintenance management:
 

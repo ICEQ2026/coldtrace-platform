@@ -8,6 +8,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepo
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetSettingsRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.IoTDeviceRepository;
+import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
 import org.springframework.stereotype.Service;
 
@@ -24,17 +25,20 @@ public class AssetManagementContextFacadeImpl implements AssetManagementContextF
     private final AssetRepository assetRepository;
     private final IoTDeviceRepository iotDeviceRepository;
     private final GatewayRepository gatewayRepository;
+    private final LocationRepository locationRepository;
     private final AssetSettingsRepository assetSettingsRepository;
 
     public AssetManagementContextFacadeImpl(
             AssetRepository assetRepository,
             IoTDeviceRepository iotDeviceRepository,
             GatewayRepository gatewayRepository,
+            LocationRepository locationRepository,
             AssetSettingsRepository assetSettingsRepository
     ) {
         this.assetRepository = assetRepository;
         this.iotDeviceRepository = iotDeviceRepository;
         this.gatewayRepository = gatewayRepository;
+        this.locationRepository = locationRepository;
         this.assetSettingsRepository = assetSettingsRepository;
     }
 
@@ -88,8 +92,33 @@ public class AssetManagementContextFacadeImpl implements AssetManagementContextF
      * {@inheritDoc}
      */
     @Override
+    public int countLocationsByOrganizationId(Long organizationId) {
+        if (organizationId == null) {
+            return 0;
+        }
+        return locationRepository.findAllByOrganizationId(organizationId).size();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public int countAssetsByOrganizationId(Long organizationId) {
+        if (organizationId == null) {
+            return 0;
+        }
         return assetRepository.findAllByOrganizationId(organizationId).size();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int countIotDevicesByOrganizationId(Long organizationId) {
+        if (organizationId == null) {
+            return 0;
+        }
+        return iotDeviceRepository.findAllByOrganizationId(organizationId).size();
     }
 
     private AssetSnapshot toSnapshot(Asset asset) {
