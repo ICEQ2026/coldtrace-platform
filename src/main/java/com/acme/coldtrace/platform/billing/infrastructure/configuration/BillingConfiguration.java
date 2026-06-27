@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
  * @since 1.0
  */
 @Configuration
-@EnableConfigurationProperties(BillingPlanCatalogProperties.class)
+@EnableConfigurationProperties({
+        BillingPlanCatalogProperties.class,
+        BillingStripeProperties.class
+})
 public class BillingConfiguration {
 }

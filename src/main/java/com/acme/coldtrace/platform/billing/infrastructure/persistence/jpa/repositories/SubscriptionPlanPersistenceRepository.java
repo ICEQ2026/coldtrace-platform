@@ -1,6 +1,7 @@
 package com.acme.coldtrace.platform.billing.infrastructure.persistence.jpa.repositories;
 
 import com.acme.coldtrace.platform.billing.infrastructure.persistence.jpa.entities.SubscriptionPlanPersistenceEntity;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +20,7 @@ public interface SubscriptionPlanPersistenceRepository extends JpaRepository<Sub
      *
      * @return active plan persistence entities
      */
+    @EntityGraph(attributePaths = "includedFeatures")
     List<SubscriptionPlanPersistenceEntity> findAllByActiveTrueOrderByMonthlyPriceCentsAsc();
 
     /**
@@ -27,5 +29,6 @@ public interface SubscriptionPlanPersistenceRepository extends JpaRepository<Sub
      * @param code stable plan code
      * @return persistence entity when found
      */
+    @EntityGraph(attributePaths = "includedFeatures")
     Optional<SubscriptionPlanPersistenceEntity> findByCode(String code);
 }

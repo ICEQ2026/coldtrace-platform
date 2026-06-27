@@ -239,6 +239,37 @@ Expected result for an existing organization:
 - If the stored plan code is not present in the plan catalog, the API returns a
   controlled `404` for the missing plan.
 
+## Stripe Checkout Sessions
+
+TS26 creates provider-hosted Stripe Checkout sessions for paid plan upgrades:
+
+```bash
+curl -i http://localhost:8080/api/v1/organizations/1/billing/checkout-sessions \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"targetPlanCode":"operations"}'
+```
+
+Required environment for a real test-mode Stripe redirect:
+
+```bash
+export STRIPE_SECRET_KEY=<stripe-test-secret-key>
+export STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
+export STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
+export BILLING_CHECKOUT_SUCCESS_URL="http://localhost:4200/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"
+export BILLING_CHECKOUT_CANCEL_URL="http://localhost:4200/identity-access/billing?checkout=cancel"
+```
+
+Expected result:
+
+- `200 OK` with `provider`, `sessionId`, `checkoutUrl`, and `targetPlanCode`.
+- The backend creates the session in Stripe subscription mode and attaches
+  `organizationId` and `targetPlanCode` metadata for the later webhook sync.
+- The Base plan is rejected with `409` because it remains free and local.
+- Paid plans without a configured Stripe price id return `409`.
+- Missing Stripe secret key or redirect URLs return `503`.
+- ColdTrace never receives card numbers; checkout is hosted by Stripe.
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -281,6 +312,9 @@ OPENAI_API_KEY=<openai-project-api-key>
 AI_REQUEST_TIMEOUT=30s
 STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
 STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
+STRIPE_SECRET_KEY=<stripe-test-secret-key>
+BILLING_CHECKOUT_SUCCESS_URL=https://<frontend-domain>/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}
+BILLING_CHECKOUT_CANCEL_URL=https://<frontend-domain>/identity-access/billing?checkout=cancel
 ```
 
 For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
@@ -653,13 +687,16 @@ Billing:
 | --- | --- |
 | `/api/v1/subscription-plans` | `GET` |
 | `/api/v1/organizations/{organizationId}/subscription` | `GET` |
+| `/api/v1/organizations/{organizationId}/billing/checkout-sessions` | `POST` |
 
 The subscription plan catalog is public and read-only so the landing page can
 show the same Base, Operations, and Compliance AI definitions as the app. The
 same route is also available without the `/api/v1` prefix for local API
 compatibility. Organization subscription responses are protected and include
 the current plan, subscription status, supported usage counters, and backend
-entitlement decisions for limits and paid features.
+entitlement decisions for limits and paid features. Checkout sessions are
+protected, use provider-hosted Stripe Checkout, and do not mutate the local
+subscription until the later signed webhook synchronization ticket.
 
 Maintenance management:
 
