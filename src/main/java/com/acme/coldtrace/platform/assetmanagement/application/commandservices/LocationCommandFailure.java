@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.assetmanagement.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types for location command execution.
  *
@@ -8,7 +11,8 @@ package com.acme.coldtrace.platform.assetmanagement.application.commandservices;
 public sealed interface LocationCommandFailure
         permits LocationCommandFailure.DuplicateName,
         LocationCommandFailure.OrganizationNotFound,
-        LocationCommandFailure.LocationNotFound {
+        LocationCommandFailure.LocationNotFound,
+        LocationCommandFailure.PlanLimitExceeded {
     /**
      * Returns the message key associated with the failure.
      *
@@ -52,6 +56,15 @@ public sealed interface LocationCommandFailure
         @Override
         public String messageKey() {
             return "asset-management.location.error.location-not-found";
+        }
+    }
+
+    /** Plan limit exceeded failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements LocationCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "asset-management.location.error.plan-limit-exceeded";
         }
     }
 }

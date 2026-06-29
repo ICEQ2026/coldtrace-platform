@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.assetmanagement.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types for IoT device command execution.
  *
@@ -11,7 +14,8 @@ public sealed interface IoTDeviceCommandFailure
         IoTDeviceCommandFailure.AssetNotFound,
         IoTDeviceCommandFailure.IncompatibleAssetLocation,
         IoTDeviceCommandFailure.IoTDeviceNotFound,
-        IoTDeviceCommandFailure.DuplicateUuid {
+        IoTDeviceCommandFailure.DuplicateUuid,
+        IoTDeviceCommandFailure.PlanLimitExceeded {
     /**
      * Returns the message key associated with the failure.
      *
@@ -73,6 +77,15 @@ public sealed interface IoTDeviceCommandFailure
         @Override
         public String messageKey() {
             return "asset-management.iot-device.error.uuid.duplicate";
+        }
+    }
+
+    /** Plan limit exceeded failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements IoTDeviceCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "asset-management.iot-device.error.plan-limit-exceeded";
         }
     }
 }

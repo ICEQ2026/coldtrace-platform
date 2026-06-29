@@ -12,6 +12,7 @@ import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateDa
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.GatewaySnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.IoTDeviceSnapshot;
@@ -39,6 +40,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_AI_GUIDANCE;
+
 /**
  * Application service that generates dashboard interpretations from backend-owned evidence.
  *
@@ -64,6 +67,7 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
     private final ReportRepository reportRepository;
     private final AiAssistanceCommandService aiAssistanceCommandService;
     private final JsonMapper jsonMapper;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public DashboardAiInterpretationCommandServiceImpl(
             IamContextFacade iamContextFacade,
@@ -73,7 +77,8 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
             MaintenanceManagementContextFacade maintenanceManagementContextFacade,
             ReportRepository reportRepository,
             AiAssistanceCommandService aiAssistanceCommandService,
-            JsonMapper jsonMapper
+            JsonMapper jsonMapper,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.iamContextFacade = iamContextFacade;
         this.monitoringContextFacade = monitoringContextFacade;
@@ -83,6 +88,7 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
         this.reportRepository = reportRepository;
         this.aiAssistanceCommandService = aiAssistanceCommandService;
         this.jsonMapper = jsonMapper;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -98,6 +104,15 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
             log.warn("Organization not found for dashboard AI interpretation: organizationId={}",
                     command.organizationId());
             return Result.failure(new DashboardAiInterpretationCommandFailure.OrganizationNotFound());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_AI_GUIDANCE
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Dashboard AI interpretation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_AI_GUIDANCE);
+            return Result.failure(new DashboardAiInterpretationCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var context = buildDashboardInterpretationContext(

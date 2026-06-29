@@ -1,6 +1,8 @@
 package com.acme.coldtrace.platform.alerts.application.commandservices;
 
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 
 /**
  * Failure types for AI resolution plan command execution.
@@ -15,7 +17,8 @@ public sealed interface AiResolutionPlanCommandFailure
         AiResolutionPlanCommandFailure.PlanNotFound,
         AiResolutionPlanCommandFailure.PlanAlreadyDecided,
         AiResolutionPlanCommandFailure.ProviderFailure,
-        AiResolutionPlanCommandFailure.ContextAssemblyFailed {
+        AiResolutionPlanCommandFailure.ContextAssemblyFailed,
+        AiResolutionPlanCommandFailure.PlanLimitExceeded {
     /** @return message key to resolve through i18n */
     String messageKey();
 
@@ -90,6 +93,15 @@ public sealed interface AiResolutionPlanCommandFailure
         @Override
         public String messageKey() {
             return "alerts.ai-resolution-plan.error.context-unavailable";
+        }
+    }
+
+    /** Subscription plan does not allow AI guidance. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements AiResolutionPlanCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "alerts.ai-resolution-plan.error.plan-limit-exceeded";
         }
     }
 }

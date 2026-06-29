@@ -3,6 +3,8 @@ package com.acme.coldtrace.platform.alerts.interfaces.rest.transform;
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
 import com.acme.coldtrace.platform.alerts.application.commandservices.AiResolutionPlanCommandFailure;
 import com.acme.coldtrace.platform.alerts.domain.model.aggregates.AiResolutionPlan;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -63,7 +65,7 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 messageSource.getMessage(
                         failure.messageKey(),
@@ -71,7 +73,9 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
                         failure.messageKey(),
                         LocaleContextHolder.getLocale()
                 )
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(AiResolutionPlanCommandFailure failure) {
@@ -82,7 +86,8 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
         }
         if (failure instanceof AiResolutionPlanCommandFailure.IncidentNotActive ||
                 failure instanceof AiResolutionPlanCommandFailure.IncidentAlreadyResolved ||
-                failure instanceof AiResolutionPlanCommandFailure.PlanAlreadyDecided) {
+                failure instanceof AiResolutionPlanCommandFailure.PlanAlreadyDecided ||
+                failure instanceof AiResolutionPlanCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof AiResolutionPlanCommandFailure.ProviderFailure providerFailure) {
@@ -99,5 +104,15 @@ public final class ResponseEntityFromAiResolutionPlanCommandResultAssembler {
             return HttpStatus.BAD_GATEWAY;
         }
         return HttpStatus.SERVICE_UNAVAILABLE;
+    }
+
+    private static void appendPlanEntitlementProperties(
+            ProblemDetail problemDetail,
+            AiResolutionPlanCommandFailure failure
+    ) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

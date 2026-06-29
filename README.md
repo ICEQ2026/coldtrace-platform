@@ -239,6 +239,17 @@ Expected result for an existing organization:
 - If the stored plan code is not present in the plan catalog, the API returns a
   controlled `404` for the missing plan.
 
+TS29 uses the same backend-computed entitlements before restricted writes or
+paid AI calls. Direct API calls are rejected with `409 Conflict` when the
+current plan does not allow the operation. The `ProblemDetail` body includes
+`entitlementKey`, `planCode`, `subscriptionStatus`, `limit`, `used`,
+`remaining`, `lockedReason`, and `requiredPlanCode` when those values are
+available.
+
+Current backend checks cover organization-scoped creation of locations, assets,
+IoT devices, users, reports, maintenance schedules, technical service requests,
+dashboard AI interpretation, AI incident guidance, and AI report summaries.
+
 ## Stripe Checkout Sessions
 
 TS26 creates provider-hosted Stripe Checkout sessions for paid plan upgrades:
@@ -775,6 +786,9 @@ protected, use provider-hosted Stripe Checkout, and do not mutate the local
 subscription until the later signed webhook synchronization ticket. Customer
 Portal sessions are protected, require an existing Stripe customer id, and
 return a temporary provider URL for self-service billing management.
+Restricted backend operations also call the billing entitlement ACL before
+persisting resources or invoking AI providers, returning `409 Conflict` with
+plan-limit metadata when a direct API request exceeds the current plan.
 
 Maintenance management:
 

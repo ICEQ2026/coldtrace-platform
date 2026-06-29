@@ -9,6 +9,15 @@ import java.util.Optional;
  * @since 1.0
  */
 public interface SubscriptionBillingContextFacade {
+    String ENTITLEMENT_LOCATIONS = "locations";
+    String ENTITLEMENT_ASSETS = "assets";
+    String ENTITLEMENT_IOT_DEVICES = "iot-devices";
+    String ENTITLEMENT_USERS = "users";
+    String ENTITLEMENT_REPORT_HISTORY = "report-history";
+    String ENTITLEMENT_MAINTENANCE = "maintenance";
+    String ENTITLEMENT_AI_GUIDANCE = "ai-guidance";
+    String ENTITLEMENT_AI_REPORT_SUMMARY = "ai-report-summary";
+
     /**
      * Ensures a newly created organization has its initial Base subscription.
      *
@@ -23,6 +32,15 @@ public interface SubscriptionBillingContextFacade {
      * @return entitlement snapshot when the organization and subscription plan exist
      */
     Optional<OrganizationEntitlementsSnapshot> fetchEntitlementsByOrganizationId(Long organizationId);
+
+    /**
+     * Checks a specific entitlement and returns metadata for blocked operations.
+     *
+     * @param organizationId organization identifier
+     * @param entitlementKey stable entitlement key
+     * @return entitlement check metadata when the key can be evaluated
+     */
+    Optional<EntitlementCheckSnapshot> checkEntitlement(Long organizationId, String entitlementKey);
 
     /**
      * Checks whether an organization can use a specific entitlement now.
@@ -55,6 +73,24 @@ public interface SubscriptionBillingContextFacade {
             Integer used,
             Integer remaining,
             String lockedReason
+    ) {
+    }
+
+    /**
+     * One entitlement decision published to other contexts for enforcement.
+     */
+    record EntitlementCheckSnapshot(
+            Long organizationId,
+            String planCode,
+            String subscriptionStatus,
+            String key,
+            String category,
+            Boolean enabled,
+            Integer limit,
+            Integer used,
+            Integer remaining,
+            String lockedReason,
+            String requiredPlanCode
     ) {
     }
 }

@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.iam.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types for user command execution.
  *
@@ -9,7 +12,8 @@ public sealed interface UserCommandFailure
         permits UserCommandFailure.DuplicateEmail,
         UserCommandFailure.OrganizationNotFound,
         UserCommandFailure.UserNotFound,
-        UserCommandFailure.RoleNotFound {
+        UserCommandFailure.RoleNotFound,
+        UserCommandFailure.PlanLimitExceeded {
     /**
      * Returns the message key associated with the failure.
      *
@@ -63,6 +67,15 @@ public sealed interface UserCommandFailure
         @Override
         public String messageKey() {
             return "identity-access.user.error.role-not-found";
+        }
+    }
+
+    /** Plan limit exceeded failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements UserCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "identity-access.user.error.plan-limit-exceeded";
         }
     }
 }
