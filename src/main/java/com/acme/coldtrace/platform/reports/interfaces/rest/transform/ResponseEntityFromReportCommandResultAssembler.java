@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.reports.interfaces.rest.transform;
 
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportCommandFailure;
 import com.acme.coldtrace.platform.reports.domain.model.aggregates.Report;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -35,8 +37,8 @@ public class ResponseEntityFromReportCommandResultAssembler {
     }
 
     private static ResponseEntity<?> toFailureResponse(ReportCommandFailure failure, MessageSource messageSource) {
-        var status = HttpStatus.NOT_FOUND;
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var status = statusFromFailure(failure);
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 messageSource.getMessage(
                         failure.messageKey(),
@@ -44,6 +46,22 @@ public class ResponseEntityFromReportCommandResultAssembler {
                         failure.messageKey(),
                         LocaleContextHolder.getLocale()
                 )
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
+    }
+
+    private static HttpStatus statusFromFailure(ReportCommandFailure failure) {
+        if (failure instanceof ReportCommandFailure.PlanLimitExceeded) {
+            return HttpStatus.CONFLICT;
+        }
+        return HttpStatus.NOT_FOUND;
+    }
+
+    private static void appendPlanEntitlementProperties(ProblemDetail problemDetail, ReportCommandFailure failure) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

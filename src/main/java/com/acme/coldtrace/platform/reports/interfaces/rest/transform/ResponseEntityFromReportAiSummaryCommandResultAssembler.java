@@ -1,6 +1,8 @@
 package com.acme.coldtrace.platform.reports.interfaces.rest.transform;
 
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.reports.application.commandservices.ReportAiSummaryCommandFailure;
 import com.acme.coldtrace.platform.reports.application.model.ReportAiSummary;
 import com.acme.coldtrace.platform.shared.application.result.Result;
@@ -41,7 +43,7 @@ public final class ResponseEntityFromReportAiSummaryCommandResultAssembler {
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 messageSource.getMessage(
                         failure.messageKey(),
@@ -49,7 +51,9 @@ public final class ResponseEntityFromReportAiSummaryCommandResultAssembler {
                         failure.messageKey(),
                         LocaleContextHolder.getLocale()
                 )
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(ReportAiSummaryCommandFailure failure) {
@@ -59,6 +63,9 @@ public final class ResponseEntityFromReportAiSummaryCommandResultAssembler {
         }
         if (failure instanceof ReportAiSummaryCommandFailure.ProviderFailure providerFailure) {
             return statusFromAiFailure(providerFailure.failure());
+        }
+        if (failure instanceof ReportAiSummaryCommandFailure.PlanLimitExceeded) {
+            return HttpStatus.CONFLICT;
         }
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
@@ -71,5 +78,15 @@ public final class ResponseEntityFromReportAiSummaryCommandResultAssembler {
             return HttpStatus.BAD_GATEWAY;
         }
         return HttpStatus.SERVICE_UNAVAILABLE;
+    }
+
+    private static void appendPlanEntitlementProperties(
+            ProblemDetail problemDetail,
+            ReportAiSummaryCommandFailure failure
+    ) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

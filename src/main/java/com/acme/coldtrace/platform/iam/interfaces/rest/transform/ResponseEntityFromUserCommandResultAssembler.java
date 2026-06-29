@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.iam.interfaces.rest.transform;
 
 import com.acme.coldtrace.platform.iam.application.commandservices.UserCommandFailure;
 import com.acme.coldtrace.platform.iam.domain.model.aggregates.User;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -33,10 +35,12 @@ public class ResponseEntityFromUserCommandResultAssembler {
                 user -> new ResponseEntity<>(UserResourceFromEntityAssembler.toResourceFromEntity(user), CREATED),
                 failure -> {
                     var status = statusFromFailure(failure);
-                    return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+                    var problemDetail = ProblemDetail.forStatusAndDetail(
                             status,
                             localizeMessage(messageSource, failure)
-                    ));
+                    );
+                    appendPlanEntitlementProperties(problemDetail, failure);
+                    return ResponseEntity.status(status).body(problemDetail);
                 }
         );
     }
@@ -56,10 +60,12 @@ public class ResponseEntityFromUserCommandResultAssembler {
                 user -> new ResponseEntity<>(UserResourceFromEntityAssembler.toResourceFromEntity(user), OK),
                 failure -> {
                     var status = statusFromFailure(failure);
-                    return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+                    var problemDetail = ProblemDetail.forStatusAndDetail(
                             status,
                             localizeMessage(messageSource, failure)
-                    ));
+                    );
+                    appendPlanEntitlementProperties(problemDetail, failure);
+                    return ResponseEntity.status(status).body(problemDetail);
                 }
         );
     }
@@ -71,7 +77,8 @@ public class ResponseEntityFromUserCommandResultAssembler {
      * @return HTTP status for the failure
      */
     private static HttpStatus statusFromFailure(UserCommandFailure failure) {
-        if (failure instanceof UserCommandFailure.DuplicateEmail) {
+        if (failure instanceof UserCommandFailure.DuplicateEmail ||
+                failure instanceof UserCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof UserCommandFailure.OrganizationNotFound ||
@@ -96,5 +103,12 @@ public class ResponseEntityFromUserCommandResultAssembler {
                 failure.messageKey(),
                 LocaleContextHolder.getLocale()
         );
+    }
+
+    private static void appendPlanEntitlementProperties(ProblemDetail problemDetail, UserCommandFailure failure) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

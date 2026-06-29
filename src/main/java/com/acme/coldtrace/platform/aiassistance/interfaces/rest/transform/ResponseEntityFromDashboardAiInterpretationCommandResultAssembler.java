@@ -3,6 +3,8 @@ package com.acme.coldtrace.platform.aiassistance.interfaces.rest.transform;
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.DashboardAiInterpretationCommandFailure;
 import com.acme.coldtrace.platform.aiassistance.application.model.DashboardAiInterpretation;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -43,7 +45,7 @@ public final class ResponseEntityFromDashboardAiInterpretationCommandResultAssem
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 messageSource.getMessage(
                         failure.messageKey(),
@@ -51,7 +53,9 @@ public final class ResponseEntityFromDashboardAiInterpretationCommandResultAssem
                         failure.messageKey(),
                         LocaleContextHolder.getLocale()
                 )
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(DashboardAiInterpretationCommandFailure failure) {
@@ -60,6 +64,9 @@ public final class ResponseEntityFromDashboardAiInterpretationCommandResultAssem
         }
         if (failure instanceof DashboardAiInterpretationCommandFailure.ProviderFailure providerFailure) {
             return statusFromAiFailure(providerFailure.failure());
+        }
+        if (failure instanceof DashboardAiInterpretationCommandFailure.PlanLimitExceeded) {
+            return HttpStatus.CONFLICT;
         }
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
@@ -72,5 +79,15 @@ public final class ResponseEntityFromDashboardAiInterpretationCommandResultAssem
             return HttpStatus.BAD_GATEWAY;
         }
         return HttpStatus.SERVICE_UNAVAILABLE;
+    }
+
+    private static void appendPlanEntitlementProperties(
+            ProblemDetail problemDetail,
+            DashboardAiInterpretationCommandFailure failure
+    ) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

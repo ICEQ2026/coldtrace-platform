@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.maintenancemanagement.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types produced while executing technical service request commands.
  *
@@ -14,7 +17,8 @@ public sealed interface TechnicalServiceRequestCommandFailure
         TechnicalServiceRequestCommandFailure.RequestNotFound,
         TechnicalServiceRequestCommandFailure.InvalidStatus,
         TechnicalServiceRequestCommandFailure.InvalidTransition,
-        TechnicalServiceRequestCommandFailure.MissingClosureData {
+        TechnicalServiceRequestCommandFailure.MissingClosureData,
+        TechnicalServiceRequestCommandFailure.PlanLimitExceeded {
     /** @return message key to resolve through i18n */
     String messageKey();
 
@@ -83,6 +87,14 @@ public sealed interface TechnicalServiceRequestCommandFailure
     record MissingClosureData() implements TechnicalServiceRequestCommandFailure {
         public String messageKey() {
             return "maintenance-management.technical-service-request.error.closure-data.required";
+        }
+    }
+
+    /** Plan entitlement failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements TechnicalServiceRequestCommandFailure, PlanEntitlementFailure {
+        public String messageKey() {
+            return "maintenance-management.technical-service-request.error.plan-limit-exceeded";
         }
     }
 }

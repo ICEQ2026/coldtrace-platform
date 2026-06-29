@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.assetmanagement.interfaces.rest.transform;
 
 import com.acme.coldtrace.platform.assetmanagement.application.commandservices.IoTDeviceCommandFailure;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.IoTDevice;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -59,14 +61,17 @@ public class ResponseEntityFromIoTDeviceCommandResultAssembler {
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 localizeMessage(messageSource, failure)
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(IoTDeviceCommandFailure failure) {
-        if (failure instanceof IoTDeviceCommandFailure.DuplicateUuid) {
+        if (failure instanceof IoTDeviceCommandFailure.DuplicateUuid ||
+                failure instanceof IoTDeviceCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof IoTDeviceCommandFailure.IncompatibleAssetLocation) {
@@ -88,5 +93,12 @@ public class ResponseEntityFromIoTDeviceCommandResultAssembler {
                 failure.messageKey(),
                 LocaleContextHolder.getLocale()
         );
+    }
+
+    private static void appendPlanEntitlementProperties(ProblemDetail problemDetail, IoTDeviceCommandFailure failure) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

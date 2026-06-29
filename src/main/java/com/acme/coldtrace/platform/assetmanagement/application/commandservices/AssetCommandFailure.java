@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.assetmanagement.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types produced while executing asset command use cases.
  * <p>
@@ -14,7 +17,8 @@ public sealed interface AssetCommandFailure
         permits AssetCommandFailure.DuplicateUuid,
         AssetCommandFailure.OrganizationNotFound,
         AssetCommandFailure.LocationNotFound,
-        AssetCommandFailure.AssetNotFound {
+        AssetCommandFailure.AssetNotFound,
+        AssetCommandFailure.PlanLimitExceeded {
     /**
      * Returns the message key associated with the failure.
      *
@@ -73,6 +77,15 @@ public sealed interface AssetCommandFailure
         @Override
         public String messageKey() {
             return "asset-management.asset.error.asset-not-found";
+        }
+    }
+
+    /** Plan limit exceeded failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements AssetCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "asset-management.asset.error.plan-limit-exceeded";
         }
     }
 }

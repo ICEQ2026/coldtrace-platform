@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.maintenancemanagement.interfaces.rest.transf
 
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.MaintenanceScheduleCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.MaintenanceSchedule;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -61,10 +63,12 @@ public class ResponseEntityFromMaintenanceScheduleCommandResultAssembler {
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 localizeMessage(messageSource, failure.messageKey(), failure.args())
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(MaintenanceScheduleCommandFailure failure) {
@@ -75,7 +79,8 @@ public class ResponseEntityFromMaintenanceScheduleCommandResultAssembler {
             return HttpStatus.NOT_FOUND;
         }
         if (failure instanceof MaintenanceScheduleCommandFailure.DuplicateActiveSchedule ||
-                failure instanceof MaintenanceScheduleCommandFailure.InvalidStatusTransition) {
+                failure instanceof MaintenanceScheduleCommandFailure.InvalidStatusTransition ||
+                failure instanceof MaintenanceScheduleCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         return HttpStatus.BAD_REQUEST;
@@ -88,5 +93,15 @@ public class ResponseEntityFromMaintenanceScheduleCommandResultAssembler {
                 messageKey,
                 LocaleContextHolder.getLocale()
         );
+    }
+
+    private static void appendPlanEntitlementProperties(
+            ProblemDetail problemDetail,
+            MaintenanceScheduleCommandFailure failure
+    ) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

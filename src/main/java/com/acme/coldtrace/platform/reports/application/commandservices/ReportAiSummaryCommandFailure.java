@@ -1,6 +1,8 @@
 package com.acme.coldtrace.platform.reports.application.commandservices;
 
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 
 /**
  * Failure types for AI report summary generation.
@@ -11,7 +13,8 @@ public sealed interface ReportAiSummaryCommandFailure
         permits ReportAiSummaryCommandFailure.OrganizationNotFound,
         ReportAiSummaryCommandFailure.ReportNotFound,
         ReportAiSummaryCommandFailure.ContextAssemblyFailed,
-        ReportAiSummaryCommandFailure.ProviderFailure {
+        ReportAiSummaryCommandFailure.ProviderFailure,
+        ReportAiSummaryCommandFailure.PlanLimitExceeded {
     /** @return message key to resolve through i18n */
     String messageKey();
 
@@ -54,6 +57,15 @@ public sealed interface ReportAiSummaryCommandFailure
         @Override
         public Object[] args() {
             return failure.args();
+        }
+    }
+
+    /** Subscription plan does not allow AI report summaries. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements ReportAiSummaryCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "reports.ai-summary.error.plan-limit-exceeded";
         }
     }
 }

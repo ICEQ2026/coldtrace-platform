@@ -23,6 +23,7 @@ import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagemen
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.GatewaySnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.IoTDeviceSnapshot;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.interfaces.acl.MaintenanceManagementContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.interfaces.acl.MaintenanceManagementContextFacade.MaintenanceScheduleSnapshot;
@@ -44,6 +45,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_AI_GUIDANCE;
+
 /**
  * Application service implementation for AI resolution plan lifecycle commands.
  *
@@ -64,6 +67,7 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
     private final MaintenanceManagementContextFacade maintenanceManagementContextFacade;
     private final AiAssistanceCommandService aiAssistanceCommandService;
     private final JsonMapper jsonMapper;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public AiResolutionPlanCommandServiceImpl(
             AiResolutionPlanRepository aiResolutionPlanRepository,
@@ -74,7 +78,8 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
             MonitoringContextFacade monitoringContextFacade,
             MaintenanceManagementContextFacade maintenanceManagementContextFacade,
             AiAssistanceCommandService aiAssistanceCommandService,
-            JsonMapper jsonMapper
+            JsonMapper jsonMapper,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.aiResolutionPlanRepository = aiResolutionPlanRepository;
         this.incidentRepository = incidentRepository;
@@ -85,6 +90,7 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
         this.maintenanceManagementContextFacade = maintenanceManagementContextFacade;
         this.aiAssistanceCommandService = aiAssistanceCommandService;
         this.jsonMapper = jsonMapper;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -111,6 +117,15 @@ public class AiResolutionPlanCommandServiceImpl implements AiResolutionPlanComma
             log.warn("Incident is not active for AI resolution plan generation: organizationId={}, incidentId={}",
                     command.organizationId(), command.incidentId());
             return Result.failure(new AiResolutionPlanCommandFailure.IncidentNotActive());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_AI_GUIDANCE
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("AI resolution plan generation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_AI_GUIDANCE);
+            return Result.failure(new AiResolutionPlanCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var context = buildIncidentPlanContext(command.organizationId(), incident.get());

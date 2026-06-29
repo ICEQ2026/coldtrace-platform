@@ -3,6 +3,7 @@ package com.acme.coldtrace.platform.reports.application.internal.commandservices
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade.SensorReadingSnapshot;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_REPORT_HISTORY;
 
 /**
  * Application service implementation for report command operations.
@@ -38,19 +41,22 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final MonitoringContextFacade monitoringContextFacade;
     private final AlertsContextFacade alertsContextFacade;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public ReportCommandServiceImpl(
             ReportRepository reportRepository,
             IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
             MonitoringContextFacade monitoringContextFacade,
-            AlertsContextFacade alertsContextFacade
+            AlertsContextFacade alertsContextFacade,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.reportRepository = reportRepository;
         this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.monitoringContextFacade = monitoringContextFacade;
         this.alertsContextFacade = alertsContextFacade;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -66,6 +72,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for report generation: organizationId={}", command.organizationId());
             return Result.failure(new ReportCommandFailure.OrganizationNotFound());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_REPORT_HISTORY
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Report generation blocked by plan entitlement: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_REPORT_HISTORY);
+            return Result.failure(new ReportCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var readings = monitoringContextFacade.fetchSensorReadingsByOrganizationId(command.organizationId()).stream()
