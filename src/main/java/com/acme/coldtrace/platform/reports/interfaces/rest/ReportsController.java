@@ -46,7 +46,10 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  */
 @Slf4j
 @RestController
-@RequestMapping(value = "/organizations/{organizationId}/reports", produces = APPLICATION_JSON_VALUE)
+@RequestMapping(
+        value = {"/organizations/{organizationId}/reports", "/api/v1/organizations/{organizationId}/reports"},
+        produces = APPLICATION_JSON_VALUE
+)
 @Tag(name = "Reports", description = "Endpoints for generated operational reports")
 public class ReportsController {
     private final ReportAiSummaryCommandService reportAiSummaryCommandService;
