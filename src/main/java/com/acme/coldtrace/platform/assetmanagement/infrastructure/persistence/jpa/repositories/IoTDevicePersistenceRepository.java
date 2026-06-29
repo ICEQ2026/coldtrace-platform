@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.j
 
 import com.acme.coldtrace.platform.assetmanagement.domain.model.valueobjects.IoTDeviceUuid;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.entities.IoTDevicePersistenceEntity;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +22,7 @@ public interface IoTDevicePersistenceRepository extends JpaRepository<IoTDeviceP
      * @param organizationId organization identifier
      * @return persistence entities for the organization
      */
+    @EntityGraph(attributePaths = "measurementParameters")
     List<IoTDevicePersistenceEntity> findAllByOrganizationId(Long organizationId);
 
     /**
@@ -30,6 +32,7 @@ public interface IoTDevicePersistenceRepository extends JpaRepository<IoTDeviceP
      * @param organizationId organization identifier
      * @return persistence entity when found
      */
+    @EntityGraph(attributePaths = "measurementParameters")
     Optional<IoTDevicePersistenceEntity> findByIdAndOrganizationId(Long id, Long organizationId);
 
     /**
