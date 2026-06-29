@@ -7,6 +7,7 @@ import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateCo
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSnapshot;
 import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.interfaces.acl.MaintenanceManagementContextFacade;
@@ -34,6 +35,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_AI_REPORT_SUMMARY;
+
 /**
  * Application service that generates advisory report summaries from backend-owned evidence.
  *
@@ -56,6 +59,7 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
     private final MaintenanceManagementContextFacade maintenanceManagementContextFacade;
     private final AiAssistanceCommandService aiAssistanceCommandService;
     private final JsonMapper jsonMapper;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public ReportAiSummaryCommandServiceImpl(
             ReportRepository reportRepository,
@@ -65,7 +69,8 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
             AssetManagementContextFacade assetManagementContextFacade,
             MaintenanceManagementContextFacade maintenanceManagementContextFacade,
             AiAssistanceCommandService aiAssistanceCommandService,
-            JsonMapper jsonMapper
+            JsonMapper jsonMapper,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.reportRepository = reportRepository;
         this.iamContextFacade = iamContextFacade;
@@ -75,6 +80,7 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
         this.maintenanceManagementContextFacade = maintenanceManagementContextFacade;
         this.aiAssistanceCommandService = aiAssistanceCommandService;
         this.jsonMapper = jsonMapper;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -95,6 +101,15 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
             log.warn("Report not found for AI summary: organizationId={}, reportId={}",
                     command.organizationId(), command.reportId());
             return Result.failure(new ReportAiSummaryCommandFailure.ReportNotFound());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_AI_REPORT_SUMMARY
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("AI report summary blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_AI_REPORT_SUMMARY);
+            return Result.failure(new ReportAiSummaryCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var context = buildReportSummaryContext(command.organizationId(), report.get());

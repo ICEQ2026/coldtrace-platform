@@ -1,5 +1,6 @@
 package com.acme.coldtrace.platform.iam.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.application.commandservices.AuthenticatedUserCommandResult;
 import com.acme.coldtrace.platform.iam.application.commandservices.UserCommandFailure;
 import com.acme.coldtrace.platform.iam.application.commandservices.UserCommandService;
@@ -19,6 +20,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_USERS;
+
 /**
  * Application service implementation for user command operations.
  * It enforces application-level creation rules such as unique email and valid
@@ -34,19 +37,22 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final RoleRepository roleRepository;
     private final HashingService hashingService;
     private final TokenService tokenService;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public UserCommandServiceImpl(
             UserRepository userRepository,
             OrganizationRepository organizationRepository,
             RoleRepository roleRepository,
             HashingService hashingService,
-            TokenService tokenService
+            TokenService tokenService,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
         this.roleRepository = roleRepository;
         this.hashingService = hashingService;
         this.tokenService = tokenService;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -101,6 +107,15 @@ public class UserCommandServiceImpl implements UserCommandService {
         if (!roleRepository.existsById(command.roleId())) {
             log.warn("Role not found for user creation: roleId={}", command.roleId());
             return Result.failure(new UserCommandFailure.RoleNotFound());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_USERS
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("User creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_USERS);
+            return Result.failure(new UserCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         try {

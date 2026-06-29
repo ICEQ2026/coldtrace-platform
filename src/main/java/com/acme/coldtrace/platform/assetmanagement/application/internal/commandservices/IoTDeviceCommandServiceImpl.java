@@ -10,6 +10,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateI
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.IoTDeviceRepository;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 import static com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.IoTDevice.ORGANIZATION_ID_UUID_UNIQUE_CONSTRAINT;
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_IOT_DEVICES;
 
 /**
  * Application service implementation for IoT device command operations.
@@ -40,17 +42,20 @@ public class IoTDeviceCommandServiceImpl implements IoTDeviceCommandService {
     private final GatewayRepository gatewayRepository;
     private final AssetRepository assetRepository;
     private final OrganizationRepository organizationRepository;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public IoTDeviceCommandServiceImpl(
             IoTDeviceRepository iotDeviceRepository,
             GatewayRepository gatewayRepository,
             AssetRepository assetRepository,
-            OrganizationRepository organizationRepository
+            OrganizationRepository organizationRepository,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.iotDeviceRepository = iotDeviceRepository;
         this.gatewayRepository = gatewayRepository;
         this.assetRepository = assetRepository;
         this.organizationRepository = organizationRepository;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -71,6 +76,15 @@ public class IoTDeviceCommandServiceImpl implements IoTDeviceCommandService {
             log.warn("Duplicate IoT device uuid detected: organizationId={}, uuid={}",
                     command.organizationId(), command.uuid());
             return Result.failure(new IoTDeviceCommandFailure.DuplicateUuid());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_IOT_DEVICES
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("IoT device creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_IOT_DEVICES);
+            return Result.failure(new IoTDeviceCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
         try {
             var device = iotDeviceRepository.save(new IoTDevice(command));

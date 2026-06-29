@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.maintenancemanagement.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types produced while executing maintenance schedule command use cases.
  * <p>
@@ -14,7 +17,8 @@ public sealed interface MaintenanceScheduleCommandFailure
         MaintenanceScheduleCommandFailure.ResponsibleUserNotFound,
         MaintenanceScheduleCommandFailure.MaintenanceScheduleNotFound,
         MaintenanceScheduleCommandFailure.DuplicateActiveSchedule,
-        MaintenanceScheduleCommandFailure.InvalidStatusTransition {
+        MaintenanceScheduleCommandFailure.InvalidStatusTransition,
+        MaintenanceScheduleCommandFailure.PlanLimitExceeded {
     /**
      * Returns the message key associated with the failure.
      *
@@ -76,6 +80,15 @@ public sealed interface MaintenanceScheduleCommandFailure
         @Override
         public String messageKey() {
             return "maintenance-management.maintenance-schedule.error.invalid-status-transition";
+        }
+    }
+
+    /** Plan entitlement failure. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements MaintenanceScheduleCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "maintenance-management.maintenance-schedule.error.plan-limit-exceeded";
         }
     }
 }

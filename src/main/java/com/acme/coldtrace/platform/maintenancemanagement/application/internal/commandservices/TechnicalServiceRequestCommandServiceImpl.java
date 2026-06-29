@@ -2,6 +2,7 @@ package com.acme.coldtrace.platform.maintenancemanagement.application.internal.c
 
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandService;
@@ -13,6 +14,8 @@ import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_MAINTENANCE;
 
 /**
  * Application service that handles technical service request command use cases.
@@ -31,6 +34,7 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
     private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final AlertsContextFacade alertsContextFacade;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     /**
      * Creates the command service with repositories and cross-context facades required
@@ -45,12 +49,14 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
             TechnicalServiceRequestRepository technicalServiceRequestRepository,
             IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
-            AlertsContextFacade alertsContextFacade
+            AlertsContextFacade alertsContextFacade,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.technicalServiceRequestRepository = technicalServiceRequestRepository;
         this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.alertsContextFacade = alertsContextFacade;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -96,6 +102,15 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
                         command.organizationId(), command.incidentId());
                 return Result.failure(new TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest());
             }
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_MAINTENANCE
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Technical service request creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_MAINTENANCE);
+            return Result.failure(new TechnicalServiceRequestCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var request = technicalServiceRequestRepository.save(new TechnicalServiceRequest(command, asset.orElseThrow()));

@@ -330,3 +330,7 @@ Acceptance criteria:
   - Given an organization exceeds a plan limit
   - When a restricted operation is attempted
   - Then the backend rejects the operation even if the frontend button was visible.
+- Scenario: Return plan-limit metadata
+  - Given a restricted backend operation is blocked by the current plan
+  - When the API returns the rejection
+  - Then the response is a controlled `409 Conflict` with entitlement key, usage, limit, remaining capacity, locked reason, and required plan metadata when available.

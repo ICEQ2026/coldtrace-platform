@@ -1,5 +1,8 @@
 package com.acme.coldtrace.platform.aiassistance.application.commandservices;
 
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+
 /**
  * Failure types for dashboard AI interpretation generation.
  *
@@ -8,7 +11,8 @@ package com.acme.coldtrace.platform.aiassistance.application.commandservices;
 public sealed interface DashboardAiInterpretationCommandFailure
         permits DashboardAiInterpretationCommandFailure.OrganizationNotFound,
         DashboardAiInterpretationCommandFailure.ContextAssemblyFailed,
-        DashboardAiInterpretationCommandFailure.ProviderFailure {
+        DashboardAiInterpretationCommandFailure.ProviderFailure,
+        DashboardAiInterpretationCommandFailure.PlanLimitExceeded {
     /** @return message key to resolve through i18n */
     String messageKey();
 
@@ -43,6 +47,15 @@ public sealed interface DashboardAiInterpretationCommandFailure
         @Override
         public Object[] args() {
             return failure.args();
+        }
+    }
+
+    /** Subscription plan does not allow AI guidance. */
+    record PlanLimitExceeded(SubscriptionBillingContextFacade.EntitlementCheckSnapshot entitlement)
+            implements DashboardAiInterpretationCommandFailure, PlanEntitlementFailure {
+        @Override
+        public String messageKey() {
+            return "ai-assistance.dashboard-interpretation.error.plan-limit-exceeded";
         }
     }
 }

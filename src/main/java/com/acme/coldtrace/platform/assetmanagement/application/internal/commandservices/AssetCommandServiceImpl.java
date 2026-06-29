@@ -7,6 +7,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateA
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateAssetCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
 import com.acme.coldtrace.platform.iam.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset.ORGANIZATION_ID_UUID_UNIQUE_CONSTRAINT;
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_ASSETS;
 
 /**
  * Application service implementation for asset command operations.
@@ -34,15 +36,18 @@ public class AssetCommandServiceImpl implements AssetCommandService {
     private final AssetRepository assetRepository;
     private final LocationRepository locationRepository;
     private final OrganizationRepository organizationRepository;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public AssetCommandServiceImpl(
             AssetRepository assetRepository,
             LocationRepository locationRepository,
-            OrganizationRepository organizationRepository
+            OrganizationRepository organizationRepository,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.assetRepository = assetRepository;
         this.locationRepository = locationRepository;
         this.organizationRepository = organizationRepository;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -68,6 +73,15 @@ public class AssetCommandServiceImpl implements AssetCommandService {
             log.warn("Duplicate asset uuid detected: organizationId={}, uuid={}",
                     command.organizationId(), command.uuid());
             return Result.failure(new AssetCommandFailure.DuplicateUuid());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_ASSETS
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Asset creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_ASSETS);
+            return Result.failure(new AssetCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
         try {
             var asset = assetRepository.save(new Asset(command));

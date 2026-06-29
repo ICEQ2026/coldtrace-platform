@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.assetmanagement.interfaces.rest.transform;
 
 import com.acme.coldtrace.platform.assetmanagement.application.commandservices.AssetCommandFailure;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -64,14 +66,17 @@ public class ResponseEntityFromAssetCommandResultAssembler {
             MessageSource messageSource
     ) {
         var status = statusFromFailure(failure);
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(
+        var problemDetail = ProblemDetail.forStatusAndDetail(
                 status,
                 localizeMessage(messageSource, failure)
-        ));
+        );
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     private static HttpStatus statusFromFailure(AssetCommandFailure failure) {
-        if (failure instanceof AssetCommandFailure.DuplicateUuid) {
+        if (failure instanceof AssetCommandFailure.DuplicateUuid ||
+                failure instanceof AssetCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof AssetCommandFailure.OrganizationNotFound ||
@@ -89,5 +94,12 @@ public class ResponseEntityFromAssetCommandResultAssembler {
                 failure.messageKey(),
                 LocaleContextHolder.getLocale()
         );
+    }
+
+    private static void appendPlanEntitlementProperties(ProblemDetail problemDetail, AssetCommandFailure failure) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }
