@@ -1,6 +1,8 @@
 package com.acme.coldtrace.platform.reports.application.internal.commandservices;
 
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAssistanceCommandService;
+import com.acme.coldtrace.platform.aiassistance.application.model.ComplianceFindingDraft;
+import com.acme.coldtrace.platform.aiassistance.application.model.ComplianceSummaryDraft;
 import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateComplianceSummaryCommand;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade.IncidentSnapshot;
@@ -111,11 +113,12 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
         }
 
         var response = generatedSummary.success().orElseThrow();
+        var summary = sanitizeComplianceSummary(response.content(), context);
         log.info("AI report summary generated: organizationId={}, reportId={}, modelProvider={}, modelName={}",
                 command.organizationId(), command.reportId(), response.modelProvider(), response.modelName());
         return Result.success(new ReportAiSummary(
                 report.get(),
-                response.content(),
+                summary,
                 response.modelProvider(),
                 response.modelName(),
                 OffsetDateTime.now()
@@ -381,6 +384,135 @@ public class ReportAiSummaryCommandServiceImpl implements ReportAiSummaryCommand
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private ComplianceSummaryDraft sanitizeComplianceSummary(
+            ComplianceSummaryDraft summary,
+            ReportSummaryContext context) {
+        return new ComplianceSummaryDraft(
+                sanitizeText(summary.executiveSummary(), 600, fallbackExecutiveSummary(context)),
+                sanitizeFindings(summary.findings(), context),
+                sanitizeTextList(summary.evidenceGaps(), fallbackEvidenceGaps(context), 2, 2, 240),
+                sanitizeTextList(summary.recommendedActions(), fallbackRecommendedActions(context), 2, 2, 240),
+                sanitizeTextList(summary.uncertaintyNotes(), fallbackUncertaintyNotes(context), 1, 1, 240)
+        );
+    }
+
+    private List<ComplianceFindingDraft> sanitizeFindings(
+            List<ComplianceFindingDraft> findings,
+            ReportSummaryContext context) {
+        var sanitized = new ArrayList<ComplianceFindingDraft>();
+        if (findings != null) {
+            findings.stream()
+                    .filter(Objects::nonNull)
+                    .map(this::sanitizeFinding)
+                    .filter(Objects::nonNull)
+                    .limit(3)
+                    .forEach(sanitized::add);
+        }
+        fallbackFindings(context).stream()
+                .limit(Math.max(0, 3 - sanitized.size()))
+                .forEach(sanitized::add);
+        return sanitized;
+    }
+
+    private ComplianceFindingDraft sanitizeFinding(ComplianceFindingDraft finding) {
+        var area = sanitizeText(finding.area(), 100, null);
+        var status = sanitizeText(finding.status(), 80, null);
+        var evidence = sanitizeText(finding.evidence(), 360, null);
+        var recommendation = sanitizeText(finding.recommendation(), 320, null);
+        if (area == null || status == null || evidence == null || recommendation == null) {
+            return null;
+        }
+        return new ComplianceFindingDraft(area, status, evidence, recommendation);
+    }
+
+    private List<String> sanitizeTextList(
+            List<String> values,
+            List<String> fallbacks,
+            int minimumSize,
+            int maximumSize,
+            int maximumTextLength) {
+        var sanitized = new ArrayList<String>();
+        if (values != null) {
+            values.stream()
+                    .map(value -> sanitizeText(value, maximumTextLength, null))
+                    .filter(Objects::nonNull)
+                    .limit(maximumSize)
+                    .forEach(sanitized::add);
+        }
+        fallbacks.stream()
+                .map(value -> sanitizeText(value, maximumTextLength, null))
+                .filter(Objects::nonNull)
+                .limit(Math.max(0, minimumSize - sanitized.size()))
+                .forEach(sanitized::add);
+        return sanitized.stream().limit(maximumSize).toList();
+    }
+
+    private String sanitizeText(String value, int maxLength, String fallback) {
+        var normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            normalized = fallback;
+        }
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+        normalized = normalized.replace("&#x0A;", " ")
+                .replace("\\n", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return limitText(normalized, maxLength);
+    }
+
+    private String fallbackExecutiveSummary(ReportSummaryContext context) {
+        return "The report requires operational review using persisted metrics and available evidence.";
+    }
+
+    private List<ComplianceFindingDraft> fallbackFindings(ReportSummaryContext context) {
+        return List.of(
+                new ComplianceFindingDraft(
+                        "Thermal compliance",
+                        fallbackStatus(context.metrics().compliancePercentage()),
+                        "Compliance is based on persisted report metrics.",
+                        "Review out-of-range readings and confirm corrective evidence."),
+                new ComplianceFindingDraft(
+                        "Incident pressure",
+                        context.metrics().openIncidentCount() != null && context.metrics().openIncidentCount() > 0
+                                ? "attention required"
+                                : "stable",
+                        "The report records %s open incident(s).".formatted(context.metrics().openIncidentCount()),
+                        "Prioritize open incident review before final compliance closure."),
+                new ComplianceFindingDraft(
+                        "Evidence coverage",
+                        context.correctiveActions().isEmpty() ? "limited evidence" : "evidence available",
+                        "Corrective action evidence was assembled from backend records.",
+                        "Attach final corrective notes where evidence is incomplete.")
+        );
+    }
+
+    private String fallbackStatus(Double compliancePercentage) {
+        if (compliancePercentage == null) {
+            return "limited evidence";
+        }
+        return compliancePercentage >= 95.0 ? "stable" : "attention required";
+    }
+
+    private List<String> fallbackEvidenceGaps(ReportSummaryContext context) {
+        return List.of(
+                "AI summary is limited to persisted report metrics and related backend evidence.",
+                "Manual quality validation is still required before using the summary as final compliance evidence."
+        );
+    }
+
+    private List<String> fallbackRecommendedActions(ReportSummaryContext context) {
+        return List.of(
+                "Review out-of-range readings and open incidents referenced by the report.",
+                "Attach corrective evidence before sharing the report with quality stakeholders."
+        );
+    }
+
+    private List<String> fallbackUncertaintyNotes(ReportSummaryContext context) {
+        return List.of("Generated summary is advisory and depends on the completeness of persisted ColdTrace records.");
     }
 
     private record ReportSummaryContext(

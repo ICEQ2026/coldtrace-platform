@@ -1,9 +1,7 @@
 package com.acme.coldtrace.platform.aiassistance.application.model;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -21,10 +19,10 @@ import java.util.List;
 @JsonPropertyOrder({"executiveSummary", "findings", "evidenceGaps", "recommendedActions", "uncertaintyNotes"})
 public record ComplianceSummaryDraft(
         @NotBlank @Size(max = 600) String executiveSummary,
-        @NotEmpty @Size(max = 10) List<@Valid ComplianceFindingDraft> findings,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> evidenceGaps,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> recommendedActions,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> uncertaintyNotes
+        @Size(max = 10) List<ComplianceFindingDraft> findings,
+        @Size(max = 8) List<String> evidenceGaps,
+        @Size(max = 8) List<String> recommendedActions,
+        @Size(max = 8) List<String> uncertaintyNotes
 ) {
     public ComplianceSummaryDraft {
         findings = findings == null ? List.of() : List.copyOf(findings);
