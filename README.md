@@ -671,6 +671,25 @@ HTTP/1.1 422
 code: SOCIAL_IDENTITY_REQUIRES_ONBOARDING
 ```
 
+Password reset request smoke check:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/password-reset-requests \
+  -H "Content-Type: application/json" \
+  -d '{"email":"david@coldtrace.example"}'
+```
+
+Expected result:
+
+```text
+HTTP/1.1 202
+```
+
+The response is intentionally generic and does not reveal whether the submitted
+email belongs to a ColdTrace user. Existing users generate persisted reset
+metadata with a hashed token only; the raw token and email delivery are not
+exposed by this academic endpoint.
+
 ## Package Map
 
 ```text
@@ -690,7 +709,7 @@ Context responsibilities:
 - `aiassistance`: Spring AI provider configuration, backend-owned prompt
   templates, structured advisory output, validation, timeout handling, and
   controlled provider failures.
-- `iam`: organizations, users, roles, organization sign-up, email/password authentication, JWT sessions, and Google/Apple external identity links.
+- `iam`: organizations, users, roles, organization sign-up, email/password authentication, JWT sessions, password reset requests, and Google/Apple external identity links.
 - `assetmanagement`: locations, gateways, assets, IoT devices, and asset settings.
 - `monitoring`: sensor readings and random demo reading generation.
 - `alerts`: incidents, notifications, acknowledgement, escalation, corrective action, and resolution.
@@ -699,8 +718,12 @@ Context responsibilities:
 - `billing`: public subscription plan catalog, pricing metadata, and future organization subscription state.
 - `shared`: reusable application, persistence, domain, and REST support.
 
-Password reset remains deferred. Authentication uses ColdTrace JWT sessions;
-business APIs still preserve organization ownership through route parameters.
+Password reset requests are accepted through a public endpoint because the user
+does not have a valid JWT during the recovery flow. The API returns a generic
+accepted response and records only hashed token metadata for existing users;
+email delivery and password update confirmation remain outside this ticket.
+Authentication uses ColdTrace JWT sessions; business APIs still preserve
+organization ownership through route parameters.
 
 ## API Overview
 
@@ -710,6 +733,7 @@ Identity access:
 | --- | --- |
 | `/authentication/sign-in` | `POST` |
 | `/authentication/social/{provider}/token-exchange` | `POST` |
+| `/password-reset-requests` | `POST` |
 | `/organization-sign-ups` | `POST` |
 | `/organizations` | `GET`, `POST` |
 | `/roles` | `GET` |

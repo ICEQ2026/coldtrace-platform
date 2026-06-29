@@ -37,7 +37,7 @@ workspace "ColdTrace Platform Solution - C4 Model" "System-wide software archite
 
             api = container "ColdTrace Platform REST API" "Provides organization-scoped REST APIs for identity access, asset management, monitoring, alerts, reports, maintenance, AI assistance, and billing." "Java and Spring Boot" {
                 tags "Server-side Application"
-                identityAccessModule = component "Identity Access Module" "Organizations, users, roles, organization sign-up, planned JWT authentication, and external identity links."
+                identityAccessModule = component "Identity Access Module" "Organizations, users, roles, organization sign-up, JWT authentication, password reset requests, and external identity links."
                 assetManagementModule = component "Asset Management Module" "Locations, gateways, assets, IoT devices, and asset settings."
                 monitoringModule = component "Monitoring Module" "Sensor readings and backend-owned demo telemetry generation."
                 alertsModule = component "Alerts Module" "Incidents, notifications, acknowledgement, escalation, corrective action, and resolution."
@@ -47,7 +47,7 @@ workspace "ColdTrace Platform Solution - C4 Model" "System-wide software archite
                 sharedModule = component "Shared Module" "Application results, localized REST errors, JPA base support, naming strategy, CORS, and OpenAPI configuration."
             }
 
-            database = container "ColdTrace Database" "Stores organization, asset, monitoring, incident, report, maintenance, subscription, and AI-assistance data." "MySQL / Cloud SQL" {
+            database = container "ColdTrace Database" "Stores organization, user, password reset request, asset, monitoring, incident, report, maintenance, subscription, and AI-assistance data." "MySQL / Cloud SQL" {
                 tags "Database"
             }
         }

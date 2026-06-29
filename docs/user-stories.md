@@ -111,6 +111,38 @@ Acceptance criteria:
 
 ---
 
+### TS-SEC003 - Request Password Reset
+
+As a frontend developer, I want the backend to accept password reset requests so that the login screen does not need to search users directly.
+
+Status: implemented security ticket.
+
+Contract:
+
+- `POST /api/v1/password-reset-requests`
+- Request body contains `email`.
+- Success returns `202 Accepted` with `accepted`, `requestedAt`, `expiresAt`, and `deliveryStatus`.
+- The response is generic and does not reveal whether the email exists.
+- Existing users generate persisted reset metadata with a hashed token only.
+- Email delivery and password update confirmation are out of scope for this ticket.
+
+Acceptance criteria:
+
+- Scenario: Existing user request
+  - Given a registered user submits an email to `POST /api/v1/password-reset-requests`
+  - When the backend accepts the request
+  - Then the API returns `202 Accepted` and stores reset metadata without exposing a raw token.
+- Scenario: Unknown email request
+  - Given the submitted email does not match a ColdTrace user
+  - When the backend processes the request
+  - Then the API still returns `202 Accepted` so the frontend cannot enumerate accounts.
+- Scenario: Invalid email
+  - Given the request body has a missing or invalid email
+  - When validation runs
+  - Then the API returns `400 Bad Request` with the shared error schema.
+
+---
+
 ### TS-ID001 - Create Organization Sign-Up
 
 As a frontend developer, I want to create an organization and its first administrative user in one backend operation so that registration does not leave partial tenant data.
