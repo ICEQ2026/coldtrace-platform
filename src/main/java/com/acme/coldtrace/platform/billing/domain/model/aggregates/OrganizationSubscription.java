@@ -81,6 +81,41 @@ public class OrganizationSubscription extends AbstractDomainAggregateRoot<Organi
         return status.allowsPlanEntitlements();
     }
 
+    /**
+     * Updates this subscription from a verified external provider event.
+     *
+     * @param planCode subscribed plan code
+     * @param status current provider subscription status
+     * @param provider billing provider
+     * @param providerCustomerId provider customer identifier
+     * @param providerSubscriptionId provider subscription identifier
+     * @param currentPeriodStart current billing period start
+     * @param currentPeriodEnd current billing period end
+     * @param cancelAtPeriodEnd whether provider cancellation is scheduled
+     * @param metadata non-sensitive synchronization metadata
+     */
+    public void synchronizeProviderState(
+            String planCode,
+            SubscriptionStatus status,
+            BillingProvider provider,
+            String providerCustomerId,
+            String providerSubscriptionId,
+            OffsetDateTime currentPeriodStart,
+            OffsetDateTime currentPeriodEnd,
+            Boolean cancelAtPeriodEnd,
+            String metadata
+    ) {
+        this.planCode = normalizePlanCode(planCode);
+        this.status = status == null ? SubscriptionStatus.FREE : status;
+        this.provider = provider == null ? BillingProvider.NONE : provider;
+        this.providerCustomerId = normalizeOptionalText(providerCustomerId);
+        this.providerSubscriptionId = normalizeOptionalText(providerSubscriptionId);
+        this.currentPeriodStart = currentPeriodStart;
+        this.currentPeriodEnd = currentPeriodEnd;
+        this.cancelAtPeriodEnd = cancelAtPeriodEnd != null && cancelAtPeriodEnd;
+        this.metadata = normalizeOptionalText(metadata);
+    }
+
     private static Long requirePositive(Long value, String fieldName) {
         if (value == null || value <= 0) {
             throw new IllegalArgumentException(

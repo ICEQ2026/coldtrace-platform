@@ -45,6 +45,15 @@ public class SubscriptionPlanRepositoryImpl implements SubscriptionPlanRepositor
      * {@inheritDoc}
      */
     @Override
+    public Optional<SubscriptionPlan> findByStripePriceId(String stripePriceId) {
+        return subscriptionPlanPersistenceRepository.findByStripePriceId(stripePriceId)
+                .map(SubscriptionPlanPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public SubscriptionPlan save(SubscriptionPlan subscriptionPlan) {
         if (subscriptionPlan.getId() == null) {
             var entity = SubscriptionPlanPersistenceAssembler.toPersistenceFromDomain(subscriptionPlan);

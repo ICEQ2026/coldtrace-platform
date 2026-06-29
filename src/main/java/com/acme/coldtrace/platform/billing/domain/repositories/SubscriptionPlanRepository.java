@@ -27,6 +27,14 @@ public interface SubscriptionPlanRepository {
     Optional<SubscriptionPlan> findByCode(String code);
 
     /**
+     * Finds a plan by Stripe price identifier.
+     *
+     * @param stripePriceId Stripe price identifier
+     * @return subscription plan when found
+     */
+    Optional<SubscriptionPlan> findByStripePriceId(String stripePriceId);
+
+    /**
      * Persists a subscription plan.
      *
      * @param subscriptionPlan plan aggregate
