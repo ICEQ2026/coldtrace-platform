@@ -34,6 +34,7 @@ environment contract.
 
 - checkout
 - Java 26 setup with Maven cache
+- disposable MySQL 8.4 service for Spring/JPA integration tests
 - `./mvnw -B test`
 - `./mvnw -B -DskipTests package`
 
