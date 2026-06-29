@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param webhookSigningSecret Stripe webhook endpoint signing secret
  * @param checkoutSuccessUrl frontend URL after successful checkout
  * @param checkoutCancelUrl frontend URL after canceled checkout
+ * @param customerPortalReturnUrl frontend URL after leaving Stripe Customer Portal
  * @since 1.0
  */
 @ConfigurationProperties(prefix = "coldtrace.billing.stripe")
@@ -16,7 +17,8 @@ public record BillingStripeProperties(
         String secretKey,
         String webhookSigningSecret,
         String checkoutSuccessUrl,
-        String checkoutCancelUrl
+        String checkoutCancelUrl,
+        String customerPortalReturnUrl
 ) {
     /**
      * Normalizes optional provider settings.
@@ -26,6 +28,7 @@ public record BillingStripeProperties(
         webhookSigningSecret = normalizeOptionalText(webhookSigningSecret);
         checkoutSuccessUrl = normalizeOptionalText(checkoutSuccessUrl);
         checkoutCancelUrl = normalizeOptionalText(checkoutCancelUrl);
+        customerPortalReturnUrl = normalizeOptionalText(customerPortalReturnUrl);
     }
 
     /**
@@ -40,6 +43,13 @@ public record BillingStripeProperties(
      */
     public boolean hasWebhookConfiguration() {
         return webhookSigningSecret != null;
+    }
+
+    /**
+     * @return true when the provider can create customer portal sessions
+     */
+    public boolean hasCustomerPortalConfiguration() {
+        return secretKey != null && customerPortalReturnUrl != null;
     }
 
     private static String normalizeOptionalText(String value) {

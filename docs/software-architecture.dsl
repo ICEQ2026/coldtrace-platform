@@ -43,6 +43,7 @@ workspace "ColdTrace Platform Solution - C4 Model" "System-wide software archite
                 alertsModule = component "Alerts Module" "Incidents, notifications, acknowledgement, escalation, corrective action, and resolution."
                 reportsModule = component "Reports Module" "Operational and compliance report generation."
                 maintenanceModule = component "Maintenance Management Module" "Preventive maintenance schedules and technical service requests."
+                billingModule = component "Billing Module" "Subscription plans, organization subscription state, Stripe Checkout sessions, Customer Portal sessions, and webhook synchronization."
                 sharedModule = component "Shared Module" "Application results, localized REST errors, JPA base support, naming strategy, CORS, and OpenAPI configuration."
             }
 
@@ -82,6 +83,9 @@ workspace "ColdTrace Platform Solution - C4 Model" "System-wide software archite
         reportsModule -> alertsModule "Aggregates incident and corrective-action metrics"
         maintenanceModule -> assetManagementModule "Schedules work for assets"
         maintenanceModule -> alertsModule "Links service requests to incidents when applicable"
+        billingModule -> stripe "Creates Checkout and Customer Portal sessions and processes webhook events"
+        billingModule -> sharedModule "Uses shared abstractions"
+        billingModule -> identityAccessModule "Validates organization references"
     }
 
     views {
@@ -123,6 +127,7 @@ workspace "ColdTrace Platform Solution - C4 Model" "System-wide software archite
             include alertsModule
             include reportsModule
             include maintenanceModule
+            include billingModule
             include sharedModule
             include database
             include stripe

@@ -310,11 +310,11 @@ Acceptance criteria:
 
 ---
 
-### TS-BILL001 - Manage Plans, Subscriptions, and Stripe Checkout
+### TS-BILL001 - Manage Plans, Subscriptions, Stripe Checkout, and Customer Portal
 
 As a frontend developer, I want backend-owned subscription plan and billing APIs so that plan limits are enforced outside the frontend.
 
-Status: planned Sprint 4 feature.
+Status: Sprint 4 feature in progress.
 
 Acceptance criteria:
 
@@ -326,6 +326,10 @@ Acceptance criteria:
   - Given an administrator selects a paid plan
   - When the backend creates a Stripe Checkout session
   - Then the frontend receives a provider-hosted redirect URL.
+- Scenario: Create customer portal session
+  - Given an organization already has a Stripe customer identifier
+  - When the administrator opens billing management
+  - Then the backend creates a Stripe Customer Portal session and returns a provider-hosted redirect URL.
 - Scenario: Enforce entitlement
   - Given an organization exceeds a plan limit
   - When a restricted operation is attempted

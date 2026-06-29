@@ -314,6 +314,35 @@ Expected behavior:
 - Checkout success in the frontend is only advisory until the webhook updates
   the local subscription state.
 
+## Stripe Customer Portal Sessions
+
+TS28 creates provider-hosted Stripe Customer Portal sessions so organization
+administrators can manage payment methods, invoices, cancellations, and
+subscription billing directly in Stripe instead of ColdTrace collecting payment
+details:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/organizations/1/billing/portal-sessions \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Required environment for a real test-mode portal redirect:
+
+```bash
+export STRIPE_SECRET_KEY=<stripe-test-secret-key>
+export BILLING_CUSTOMER_PORTAL_RETURN_URL="http://localhost:4200/identity-access/billing?portal=return"
+```
+
+Expected result:
+
+- `200 OK` with `provider`, `sessionId`, `portalUrl`, and `organizationId`.
+- The organization must already have a Stripe customer id stored in its local
+  subscription record.
+- Free-plan organizations that have not completed Stripe Checkout return `409`.
+- Missing Stripe secret key or portal return URL returns `503`.
+- ColdTrace never creates custom invoice or card-management screens; Stripe
+  Customer Portal owns that workflow.
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -360,6 +389,7 @@ STRIPE_SECRET_KEY=<stripe-test-secret-key>
 STRIPE_WEBHOOK_SECRET=<stripe-webhook-signing-secret>
 BILLING_CHECKOUT_SUCCESS_URL=https://<frontend-domain>/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}
 BILLING_CHECKOUT_CANCEL_URL=https://<frontend-domain>/identity-access/billing?checkout=cancel
+BILLING_CUSTOMER_PORTAL_RETURN_URL=https://<frontend-domain>/identity-access/billing?portal=return
 ```
 
 For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
@@ -733,6 +763,7 @@ Billing:
 | `/api/v1/subscription-plans` | `GET` |
 | `/api/v1/organizations/{organizationId}/subscription` | `GET` |
 | `/api/v1/organizations/{organizationId}/billing/checkout-sessions` | `POST` |
+| `/api/v1/organizations/{organizationId}/billing/portal-sessions` | `POST` |
 
 The subscription plan catalog is public and read-only so the landing page can
 show the same Base, Operations, and Compliance AI definitions as the app. The
@@ -741,7 +772,9 @@ compatibility. Organization subscription responses are protected and include
 the current plan, subscription status, supported usage counters, and backend
 entitlement decisions for limits and paid features. Checkout sessions are
 protected, use provider-hosted Stripe Checkout, and do not mutate the local
-subscription until the later signed webhook synchronization ticket.
+subscription until the later signed webhook synchronization ticket. Customer
+Portal sessions are protected, require an existing Stripe customer id, and
+return a temporary provider URL for self-service billing management.
 
 Maintenance management:
 
