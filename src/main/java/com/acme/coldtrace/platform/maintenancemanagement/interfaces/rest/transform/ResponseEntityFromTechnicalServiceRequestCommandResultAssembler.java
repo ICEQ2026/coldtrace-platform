@@ -2,6 +2,8 @@ package com.acme.coldtrace.platform.maintenancemanagement.interfaces.rest.transf
 
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.TechnicalServiceRequest;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementFailure;
+import com.acme.coldtrace.platform.billing.interfaces.acl.PlanEntitlementProblemProperties;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -82,7 +84,9 @@ public final class ResponseEntityFromTechnicalServiceRequestCommandResultAssembl
                 LocaleContextHolder.getLocale()
         );
 
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(status, detail));
+        var problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
+        appendPlanEntitlementProperties(problemDetail, failure);
+        return ResponseEntity.status(status).body(problemDetail);
     }
 
     /**
@@ -93,7 +97,8 @@ public final class ResponseEntityFromTechnicalServiceRequestCommandResultAssembl
      */
     private static HttpStatus statusFromFailure(TechnicalServiceRequestCommandFailure failure) {
         if (failure instanceof TechnicalServiceRequestCommandFailure.InvalidTransition ||
-                failure instanceof TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest) {
+                failure instanceof TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest ||
+                failure instanceof TechnicalServiceRequestCommandFailure.PlanLimitExceeded) {
             return HttpStatus.CONFLICT;
         }
         if (failure instanceof TechnicalServiceRequestCommandFailure.InconsistentIncidentReference) {
@@ -106,5 +111,15 @@ public final class ResponseEntityFromTechnicalServiceRequestCommandResultAssembl
             return HttpStatus.NOT_FOUND;
         }
         return HttpStatus.BAD_REQUEST;
+    }
+
+    private static void appendPlanEntitlementProperties(
+            ProblemDetail problemDetail,
+            TechnicalServiceRequestCommandFailure failure
+    ) {
+        if (failure instanceof PlanEntitlementFailure planFailure) {
+            PlanEntitlementProblemProperties.from(planFailure.entitlement())
+                    .forEach(problemDetail::setProperty);
+        }
     }
 }

@@ -1,6 +1,6 @@
 package com.acme.coldtrace.platform.monitoring.application.internal.queryservices;
 
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.monitoring.application.queryservices.SensorReadingQueryFailure;
 import com.acme.coldtrace.platform.monitoring.application.queryservices.SensorReadingQueryService;
 import com.acme.coldtrace.platform.monitoring.domain.model.aggregates.SensorReading;
@@ -24,14 +24,14 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SensorReadingQueryServiceImpl implements SensorReadingQueryService {
     private final SensorReadingRepository sensorReadingRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
 
     public SensorReadingQueryServiceImpl(
             SensorReadingRepository sensorReadingRepository,
-            IdentityAccessContextFacade identityAccessContextFacade
+            IamContextFacade iamContextFacade
     ) {
         this.sensorReadingRepository = sensorReadingRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -43,7 +43,7 @@ public class SensorReadingQueryServiceImpl implements SensorReadingQueryService 
      */
     @Override
     public Result<List<SensorReading>, SensorReadingQueryFailure> handle(GetSensorReadingsByOrganizationIdQuery query) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new SensorReadingQueryFailure.OrganizationNotFound());
         }
         var readings = sensorReadingRepository.findAllByOrganizationId(query.organizationId()).stream()
@@ -64,7 +64,7 @@ public class SensorReadingQueryServiceImpl implements SensorReadingQueryService 
      */
     @Override
     public Result<SensorReading, SensorReadingQueryFailure> handle(GetSensorReadingByIdAndOrganizationIdQuery query) {
-        if (!identityAccessContextFacade.organizationExists(query.organizationId())) {
+        if (!iamContextFacade.organizationExists(query.organizationId())) {
             return Result.failure(new SensorReadingQueryFailure.OrganizationNotFound());
         }
         var reading = sensorReadingRepository.findByIdAndOrganizationId(query.sensorReadingId(), query.organizationId());

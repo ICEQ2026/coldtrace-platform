@@ -5,10 +5,9 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Application-layer error representation shared by REST assemblers.
  * <p>
- * The record follows the same shape used by the current course reference:
- * an error code identifies the category, a message contains the default
- * human-readable text, and details preserve the bounded-context-specific
- * message key or contextual data needed by the interface layer.
+ * The record keeps a stable error code, a default human-readable message, and
+ * details with the bounded-context-specific message key or contextual data
+ * needed by the interface layer.
  *
  * @param code stable error code used by clients and response mappers
  * @param message default non-localized error message
@@ -26,6 +25,54 @@ public record ApplicationError(String code, String message, String details) {
      */
     public static ApplicationError validationError(String field, String details) {
         return new ApplicationError("VALIDATION_ERROR", "Request validation failed", "%s: %s".formatted(field, details));
+    }
+
+    /**
+     * Builds an authentication failure for invalid credentials.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code INVALID_CREDENTIALS} code
+     */
+    public static ApplicationError invalidCredentials(String details) {
+        return new ApplicationError("INVALID_CREDENTIALS", "Invalid email or password", details);
+    }
+
+    /**
+     * Builds a provider authentication failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code PROVIDER_VALIDATION_FAILED} code
+     */
+    public static ApplicationError providerValidationFailed(String details) {
+        return new ApplicationError("PROVIDER_VALIDATION_FAILED", "Provider validation failed", details);
+    }
+
+    /**
+     * Builds a social onboarding-required failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code SOCIAL_IDENTITY_REQUIRES_ONBOARDING} code
+     */
+    public static ApplicationError socialIdentityRequiresOnboarding(String details) {
+        return new ApplicationError(
+                "SOCIAL_IDENTITY_REQUIRES_ONBOARDING",
+                "Social identity requires onboarding",
+                details
+        );
+    }
+
+    /**
+     * Builds a social provider configuration failure.
+     *
+     * @param details bounded-context-specific details or i18n message key
+     * @return application error with {@code SOCIAL_PROVIDER_CONFIGURATION_MISSING} code
+     */
+    public static ApplicationError socialProviderConfigurationMissing(String details) {
+        return new ApplicationError(
+                "SOCIAL_PROVIDER_CONFIGURATION_MISSING",
+                "Social provider configuration is missing",
+                details
+        );
     }
 
     /**

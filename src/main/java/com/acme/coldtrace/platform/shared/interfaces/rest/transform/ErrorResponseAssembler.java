@@ -15,8 +15,7 @@ import java.util.Locale;
  * Assembler for converting application errors into REST error resources.
  * <p>
  * This class centralizes the HTTP status and response-body shape used by
- * controllers, mirroring the current course reference while preserving the
- * existing ColdTrace i18n message keys.
+ * controllers while preserving the existing ColdTrace i18n message keys.
  *
  * @since 1.0
  */
@@ -67,6 +66,10 @@ public final class ErrorResponseAssembler {
     public static HttpStatusCode toStatusFromErrorCode(String errorCode) {
         return switch (errorCode) {
             case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
+            case "INVALID_CREDENTIALS" -> HttpStatus.UNAUTHORIZED;
+            case "PROVIDER_VALIDATION_FAILED" -> HttpStatus.UNAUTHORIZED;
+            case "SOCIAL_IDENTITY_REQUIRES_ONBOARDING" -> HttpStatusCode.valueOf(422);
+            case "SOCIAL_PROVIDER_CONFIGURATION_MISSING" -> HttpStatus.SERVICE_UNAVAILABLE;
             case "BUSINESS_RULE_VIOLATION" -> HttpStatusCode.valueOf(422);
             case "UNEXPECTED_ERROR" -> HttpStatus.INTERNAL_SERVER_ERROR;
             case String code when code.endsWith("_NOT_FOUND") -> HttpStatus.NOT_FOUND;

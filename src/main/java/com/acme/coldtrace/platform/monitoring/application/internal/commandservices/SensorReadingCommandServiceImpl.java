@@ -5,7 +5,7 @@ import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagemen
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.AssetSnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.GatewaySnapshot;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.IoTDeviceSnapshot;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.monitoring.application.commandservices.SensorReadingCommandFailure;
 import com.acme.coldtrace.platform.monitoring.application.commandservices.SensorReadingCommandService;
 import com.acme.coldtrace.platform.monitoring.domain.model.aggregates.SensorReading;
@@ -41,17 +41,17 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     private static final int LOW_SIGNAL_THRESHOLD = 35;
 
     private final SensorReadingRepository sensorReadingRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final Random random = new Random();
 
     public SensorReadingCommandServiceImpl(
             SensorReadingRepository sensorReadingRepository,
-            IdentityAccessContextFacade identityAccessContextFacade,
+            IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade
     ) {
         this.sensorReadingRepository = sensorReadingRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
     }
 
@@ -113,7 +113,7 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
     @Override
     @Transactional
     public Result<List<SensorReading>, SensorReadingCommandFailure> handle(GenerateDemoSensorReadingsCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new SensorReadingCommandFailure.OrganizationNotFound());
         }
         if (command.assetId() != null &&
@@ -189,7 +189,7 @@ public class SensorReadingCommandServiceImpl implements SensorReadingCommandServ
             Long assetId,
             Long iotDeviceId
     ) {
-        if (!identityAccessContextFacade.organizationExists(organizationId)) {
+        if (!iamContextFacade.organizationExists(organizationId)) {
             return Result.failure(new SensorReadingCommandFailure.OrganizationNotFound());
         }
         var asset = assetManagementContextFacade.fetchAssetByIdAndOrganizationId(organizationId, assetId);

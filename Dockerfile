@@ -11,24 +11,25 @@
 
 # Step 1: Build the application using Maven
 
-# Use a Temurin JDK 26 image and the project Maven wrapper for builds
-FROM eclipse-temurin:26-jdk AS build
+# Use a Maven image with Temurin JDK 26 for builds
+FROM maven:3.9.16-eclipse-temurin-26 AS build
 # Set the working directory inside the container
 WORKDIR /app
 COPY .mvn .mvn
 COPY mvnw .
 COPY pom.xml .
 RUN chmod +x mvnw
-RUN ./mvnw dependency:go-offline
+RUN ./mvnw -B -DskipTests dependency:go-offline
 # Copy the Maven project files into the container
 COPY src ./src
 # Build the application
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw -B -DskipTests clean package
 
 # Step 2: Create a runtime image
 # Copy the Spring Boot JAR file into the container
-FROM eclipse-temurin:26-jre AS runtime
+FROM eclipse-temurin:26-jre-noble AS runtime
 ENV SPRING_PROFILES_ACTIVE=prod
+ENV PORT=8080
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
@@ -46,5 +47,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # - DATABASE_USER: The username for the database connection.
 # - DATABASE_PASSWORD: The password for the database connection.
 # - INSTANCE_CONNECTION_NAME: The Cloud SQL instance connection name.
+# - JWT_SECRET: Secret used to sign JWT tokens.
+# - AI_MODEL_PROVIDER, AI_MODEL_NAME, and provider API keys for AI assistance.
+# - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and Stripe price ids for billing.
 # - PORT: The port on which the application will run (default is 8080).
 # - SPRING_PROFILES_ACTIVE: The active Spring profile (Must be 'prod' to use the runtime configuration).

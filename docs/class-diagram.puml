@@ -1,0 +1,238 @@
+@startuml
+' ColdTrace Platform - backend class diagram
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+left to right direction
+
+package "com.acme.coldtrace.platform.iam" {
+  package "interfaces.rest" {
+    class PasswordResetRequestsController <<controller>>
+    class OrganizationSignUpsController <<controller>>
+    class OrganizationsController <<controller>>
+    class UsersController <<controller>>
+    class RolesController <<controller>>
+  }
+
+  package "application.commandservices" {
+    interface OrganizationSignUpCommandService <<service>>
+    interface OrganizationCommandService <<service>>
+    interface UserCommandService <<service>>
+    interface PasswordResetRequestCommandService <<service>>
+  }
+
+  package "application.queryservices" {
+    interface OrganizationQueryService <<service>>
+    interface UserQueryService <<service>>
+    interface RoleQueryService <<service>>
+  }
+
+  package "domain.model.aggregates" {
+    class Organization <<aggregate>>
+    class User <<aggregate>>
+    class PasswordResetRequest <<aggregate>>
+    class Role <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface OrganizationRepository <<repository>>
+    interface UserRepository <<repository>>
+    interface PasswordResetRequestRepository <<repository>>
+    interface RoleRepository <<repository>>
+  }
+
+  PasswordResetRequestsController --> PasswordResetRequestCommandService
+  OrganizationSignUpsController --> OrganizationSignUpCommandService
+  OrganizationsController --> OrganizationCommandService
+  OrganizationsController --> OrganizationQueryService
+  UsersController --> UserCommandService
+  UsersController --> UserQueryService
+  RolesController --> RoleQueryService
+  OrganizationCommandService --> OrganizationRepository
+  OrganizationSignUpCommandService --> OrganizationRepository
+  OrganizationSignUpCommandService --> UserRepository
+  UserCommandService --> UserRepository
+  UserCommandService --> RoleRepository
+  PasswordResetRequestCommandService --> UserRepository
+  PasswordResetRequestCommandService --> PasswordResetRequestRepository
+}
+
+package "com.acme.coldtrace.platform.assetmanagement" {
+  package "interfaces.rest" {
+    class LocationsController <<controller>>
+    class GatewaysController <<controller>>
+    class AssetsController <<controller>>
+    class IoTDevicesController <<controller>>
+    class AssetSettingsController <<controller>>
+  }
+
+  package "domain.model.aggregates" {
+    class Location <<aggregate>>
+    class Gateway <<aggregate>>
+    class Asset <<aggregate>>
+    class IoTDevice <<aggregate>>
+    class AssetSettings <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface LocationRepository <<repository>>
+    interface GatewayRepository <<repository>>
+    interface AssetRepository <<repository>>
+    interface IoTDeviceRepository <<repository>>
+    interface AssetSettingsRepository <<repository>>
+  }
+
+  Gateway --> Location
+  Asset --> Location
+  IoTDevice --> Gateway
+  IoTDevice --> Asset
+  AssetSettings --> Asset
+}
+
+package "com.acme.coldtrace.platform.monitoring" {
+  package "interfaces.rest" {
+    class SensorReadingsController <<controller>>
+  }
+
+  package "domain.model.aggregates" {
+    class SensorReading <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface SensorReadingRepository <<repository>>
+  }
+
+  SensorReadingsController --> SensorReadingRepository
+}
+
+package "com.acme.coldtrace.platform.alerts" {
+  package "interfaces.rest" {
+    class IncidentsController <<controller>>
+    class NotificationsController <<controller>>
+  }
+
+  package "domain.model.aggregates" {
+    class Incident <<aggregate>>
+    class Notification <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface IncidentRepository <<repository>>
+    interface NotificationRepository <<repository>>
+  }
+
+  Incident --> Notification
+}
+
+package "com.acme.coldtrace.platform.reports" {
+  package "interfaces.rest" {
+    class ReportsController <<controller>>
+  }
+
+  package "domain.model.aggregates" {
+    class Report <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface ReportRepository <<repository>>
+  }
+}
+
+package "com.acme.coldtrace.platform.maintenancemanagement" {
+  package "interfaces.rest" {
+    class MaintenanceSchedulesController <<controller>>
+    class TechnicalServiceRequestsController <<controller>>
+  }
+
+  package "domain.model.aggregates" {
+    class MaintenanceSchedule <<aggregate>>
+    class TechnicalServiceRequest <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface MaintenanceScheduleRepository <<repository>>
+    interface TechnicalServiceRequestRepository <<repository>>
+  }
+
+  MaintenanceSchedule --> Asset
+  TechnicalServiceRequest --> Asset
+  TechnicalServiceRequest --> Incident
+}
+
+package "com.acme.coldtrace.platform.billing" {
+  package "interfaces.rest" {
+    class SubscriptionPlansController <<controller>>
+    class OrganizationSubscriptionsController <<controller>>
+    class BillingCheckoutSessionsController <<controller>>
+    class BillingPortalSessionsController <<controller>>
+    class BillingStripeWebhooksController <<controller>>
+  }
+
+  package "application.commandservices" {
+    interface BillingCheckoutSessionCommandService <<service>>
+    interface BillingPortalSessionCommandService <<service>>
+    interface BillingWebhookCommandService <<service>>
+  }
+
+  package "application.queryservices" {
+    interface SubscriptionPlanQueryService <<service>>
+    interface OrganizationSubscriptionQueryService <<service>>
+  }
+
+  package "domain.model.aggregates" {
+    class SubscriptionPlan <<aggregate>>
+    class OrganizationSubscription <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface SubscriptionPlanRepository <<repository>>
+    interface OrganizationSubscriptionRepository <<repository>>
+    interface BillingWebhookEventRepository <<repository>>
+  }
+
+  BillingCheckoutSessionsController --> BillingCheckoutSessionCommandService
+  BillingPortalSessionsController --> BillingPortalSessionCommandService
+  BillingStripeWebhooksController --> BillingWebhookCommandService
+  SubscriptionPlansController --> SubscriptionPlanQueryService
+  OrganizationSubscriptionsController --> OrganizationSubscriptionQueryService
+  BillingCheckoutSessionCommandService --> OrganizationSubscriptionRepository
+  BillingPortalSessionCommandService --> OrganizationSubscriptionRepository
+  BillingWebhookCommandService --> BillingWebhookEventRepository
+  OrganizationSubscription --> SubscriptionPlan
+}
+
+package "com.acme.coldtrace.platform.shared" {
+  package "application.result" {
+    class Result <<value>>
+    class ApplicationError <<value>>
+  }
+
+  package "interfaces.rest" {
+    class GlobalExceptionHandler <<controller advice>>
+  }
+
+  package "interfaces.rest.transform" {
+    class ResponseEntityAssembler <<assembler>>
+    class ErrorResponseAssembler <<assembler>>
+  }
+
+  package "infrastructure.persistence.jpa.configuration.strategy" {
+    class SnakeCaseWithPluralizedTablePhysicalNamingStrategy <<strategy>>
+  }
+
+  package "infrastructure.documentation.openapi.configuration" {
+    class OpenApiConfiguration <<configuration>>
+  }
+}
+
+OrganizationRepository ..> Result
+AssetRepository ..> Result
+SensorReadingRepository ..> Result
+IncidentRepository ..> Result
+ReportRepository ..> Result
+MaintenanceScheduleRepository ..> Result
+GlobalExceptionHandler --> ErrorResponseAssembler
+ResponseEntityAssembler --> ApplicationError
+ErrorResponseAssembler --> ApplicationError
+
+@enduml

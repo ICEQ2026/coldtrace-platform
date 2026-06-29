@@ -1,23 +1,34 @@
 package com.acme.coldtrace.platform.alerts.interfaces.rest;
 
 import com.acme.coldtrace.platform.alerts.application.commandservices.IncidentCommandService;
+import com.acme.coldtrace.platform.alerts.application.commandservices.AiResolutionPlanCommandService;
+import com.acme.coldtrace.platform.alerts.application.queryservices.AiResolutionPlanQueryService;
 import com.acme.coldtrace.platform.alerts.application.queryservices.IncidentQueryService;
 import com.acme.coldtrace.platform.alerts.application.queryservices.NotificationQueryService;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.GenerateAiResolutionPlanCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.queries.GetAiResolutionPlansByIncidentIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentByIdAndOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetIncidentsByOrganizationIdQuery;
 import com.acme.coldtrace.platform.alerts.domain.model.queries.GetNotificationsByIncidentIdAndOrganizationIdQuery;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.AiResolutionPlanResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.AcknowledgeIncidentResource;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.ApproveAiResolutionPlanResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.CreateIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.EscalateIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.IncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.NotificationResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.RegisterIncidentCorrectiveActionResource;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.RejectAiResolutionPlanResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.resources.ResolveIncidentResource;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.AcknowledgeIncidentCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ApproveAiResolutionPlanCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.CreateIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.EscalateIncidentCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.RegisterIncidentCorrectiveActionCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.RejectAiResolutionPlanCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResolveIncidentCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromAiResolutionPlanCommandResultAssembler;
+import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromAiResolutionPlanQueryResultAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromIncidentCommandResultAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromIncidentQueryResultAssembler;
 import com.acme.coldtrace.platform.alerts.interfaces.rest.transform.ResponseEntityFromNotificationQueryResultAssembler;
@@ -52,22 +63,34 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  */
 @Slf4j
 @RestController
-@RequestMapping(value = "/organizations/{organizationId}/incidents", produces = APPLICATION_JSON_VALUE)
+@RequestMapping(
+        value = {
+                "/organizations/{organizationId}/incidents",
+                "/api/v1/organizations/{organizationId}/incidents"
+        },
+        produces = APPLICATION_JSON_VALUE
+)
 @Tag(name = "Incidents", description = "Endpoints for organization-scoped incidents")
 public class IncidentsController {
     private final IncidentCommandService incidentCommandService;
+    private final AiResolutionPlanCommandService aiResolutionPlanCommandService;
     private final IncidentQueryService incidentQueryService;
+    private final AiResolutionPlanQueryService aiResolutionPlanQueryService;
     private final NotificationQueryService notificationQueryService;
     private final MessageSource messageSource;
 
     public IncidentsController(
             IncidentCommandService incidentCommandService,
+            AiResolutionPlanCommandService aiResolutionPlanCommandService,
             IncidentQueryService incidentQueryService,
+            AiResolutionPlanQueryService aiResolutionPlanQueryService,
             NotificationQueryService notificationQueryService,
             MessageSource messageSource
     ) {
         this.incidentCommandService = incidentCommandService;
+        this.aiResolutionPlanCommandService = aiResolutionPlanCommandService;
         this.incidentQueryService = incidentQueryService;
+        this.aiResolutionPlanQueryService = aiResolutionPlanQueryService;
         this.notificationQueryService = notificationQueryService;
         this.messageSource = messageSource;
     }
@@ -340,6 +363,180 @@ public class IncidentsController {
         var incident = incidentCommandService.handle(command);
         return ResponseEntityFromIncidentCommandResultAssembler.toResponseEntityFromLifecycleResult(
                 incident,
+                messageSource
+        );
+    }
+
+    /**
+     * Generates an AI resolution plan for an active incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @return response entity containing the persisted pending AI resolution plan
+     */
+    @Operation(summary = "Generate an incident AI resolution plan",
+            description = "Loads backend-owned incident context, requests structured AI guidance and persists a pending plan")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "AI resolution plan generated",
+                    content = @Content(schema = @Schema(implementation = AiResolutionPlanResource.class))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid identifier",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or incident not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Incident cannot receive generated plans in its current state",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "502", description = "AI provider returned invalid structured output",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "503", description = "AI provider is unavailable or disabled",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "504", description = "AI provider timed out",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{incidentId}/ai-resolution-plans")
+    public ResponseEntity<?> generateAiResolutionPlan(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId) {
+        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans", organizationId, incidentId);
+        var plan = aiResolutionPlanCommandService.handle(
+                new GenerateAiResolutionPlanCommand(organizationId, incidentId)
+        );
+        return ResponseEntityFromAiResolutionPlanCommandResultAssembler.toResponseEntityFromCreateResult(
+                plan,
+                messageSource
+        );
+    }
+
+    /**
+     * Approves an AI resolution plan and resolves its incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @param planId AI resolution plan identifier
+     * @param resource approval request resource
+     * @return response entity containing the approved AI resolution plan
+     */
+    @Operation(
+            summary = "Approve an incident AI resolution plan",
+            description = "Approves a pending AI plan, stores final operator notes and resolves the incident through backend lifecycle rules",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "AI resolution plan approval request",
+                    content = @Content(schema = @Schema(implementation = ApproveAiResolutionPlanResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "AI resolution plan approved and incident resolved",
+                    content = @Content(schema = @Schema(implementation = AiResolutionPlanResource.class))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid approval request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization, incident, or AI plan not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Plan already decided or incident already resolved",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{incidentId}/ai-resolution-plans/{planId}/approvals")
+    public ResponseEntity<?> approveAiResolutionPlan(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId,
+            @Parameter(name = "planId", description = "AI resolution plan identifier", required = true)
+            @PathVariable Long planId,
+            @Valid @RequestBody ApproveAiResolutionPlanResource resource) {
+        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans/{}/approvals",
+                organizationId, incidentId, planId);
+        var command = ApproveAiResolutionPlanCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                incidentId,
+                planId
+        );
+        var plan = aiResolutionPlanCommandService.handle(command);
+        return ResponseEntityFromAiResolutionPlanCommandResultAssembler.toResponseEntityFromLifecycleResult(
+                plan,
+                messageSource
+        );
+    }
+
+    /**
+     * Rejects an AI resolution plan without changing incident status.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @param planId AI resolution plan identifier
+     * @param resource rejection request resource
+     * @return response entity containing the rejected AI resolution plan
+     */
+    @Operation(
+            summary = "Reject an incident AI resolution plan",
+            description = "Rejects a pending AI plan, stores operator audit metadata and leaves the incident lifecycle unchanged",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "AI resolution plan rejection request",
+                    content = @Content(schema = @Schema(implementation = RejectAiResolutionPlanResource.class))))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "AI resolution plan rejected",
+                    content = @Content(schema = @Schema(implementation = AiResolutionPlanResource.class))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid rejection request",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization, incident, or AI plan not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Plan already approved or rejected",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{incidentId}/ai-resolution-plans/{planId}/rejections")
+    public ResponseEntity<?> rejectAiResolutionPlan(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId,
+            @Parameter(name = "planId", description = "AI resolution plan identifier", required = true)
+            @PathVariable Long planId,
+            @Valid @RequestBody RejectAiResolutionPlanResource resource) {
+        log.debug("POST /organizations/{}/incidents/{}/ai-resolution-plans/{}/rejections",
+                organizationId, incidentId, planId);
+        var command = RejectAiResolutionPlanCommandFromResourceAssembler.toCommandFromResource(
+                resource,
+                organizationId,
+                incidentId,
+                planId
+        );
+        var plan = aiResolutionPlanCommandService.handle(command);
+        return ResponseEntityFromAiResolutionPlanCommandResultAssembler.toResponseEntityFromLifecycleResult(
+                plan,
+                messageSource
+        );
+    }
+
+    /**
+     * Gets AI resolution plan history for an incident.
+     *
+     * @param organizationId organization identifier
+     * @param incidentId incident identifier
+     * @return response entity containing AI resolution plan resources
+     */
+    @Operation(summary = "Get incident AI resolution plan history",
+            description = "Gets generated, approved, and rejected AI resolution plans scoped to the provided incident")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "AI resolution plan history found",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AiResolutionPlanResource.class)))),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid identifier",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Organization or incident not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/{incidentId}/ai-resolution-plans")
+    public ResponseEntity<?> getAiResolutionPlansByIncidentId(
+            @Parameter(name = "organizationId", description = "Organization identifier", required = true)
+            @PathVariable Long organizationId,
+            @Parameter(name = "incidentId", description = "Incident identifier", required = true)
+            @PathVariable Long incidentId) {
+        log.debug("GET /organizations/{}/incidents/{}/ai-resolution-plans", organizationId, incidentId);
+        var plans = aiResolutionPlanQueryService.handle(
+                new GetAiResolutionPlansByIncidentIdAndOrganizationIdQuery(organizationId, incidentId)
+        );
+        return ResponseEntityFromAiResolutionPlanQueryResultAssembler.toResponseEntityFromListResult(
+                plans,
                 messageSource
         );
     }

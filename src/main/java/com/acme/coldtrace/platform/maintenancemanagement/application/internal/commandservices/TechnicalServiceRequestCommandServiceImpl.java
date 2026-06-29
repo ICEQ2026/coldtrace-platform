@@ -2,7 +2,8 @@ package com.acme.coldtrace.platform.maintenancemanagement.application.internal.c
 
 import com.acme.coldtrace.platform.alerts.interfaces.acl.AlertsContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.TechnicalServiceRequestCommandService;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.TechnicalServiceRequest;
@@ -13,6 +14,8 @@ import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_MAINTENANCE;
 
 /**
  * Application service that handles technical service request command use cases.
@@ -28,29 +31,32 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServiceRequestCommandService {
     private final TechnicalServiceRequestRepository technicalServiceRequestRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final AlertsContextFacade alertsContextFacade;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     /**
      * Creates the command service with repositories and cross-context facades required
      * to validate service request creation and status transitions.
      *
      * @param technicalServiceRequestRepository repository for technical service requests
-     * @param identityAccessContextFacade facade used to verify organization existence
+     * @param iamContextFacade facade used to verify organization existence
      * @param assetManagementContextFacade facade used to verify and read assets
      * @param alertsContextFacade facade used to verify related incidents
      */
     public TechnicalServiceRequestCommandServiceImpl(
             TechnicalServiceRequestRepository technicalServiceRequestRepository,
-            IdentityAccessContextFacade identityAccessContextFacade,
+            IamContextFacade iamContextFacade,
             AssetManagementContextFacade assetManagementContextFacade,
-            AlertsContextFacade alertsContextFacade
+            AlertsContextFacade alertsContextFacade,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.technicalServiceRequestRepository = technicalServiceRequestRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.alertsContextFacade = alertsContextFacade;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -68,7 +74,7 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
     public Result<TechnicalServiceRequest, TechnicalServiceRequestCommandFailure> handle(
             CreateTechnicalServiceRequestCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new TechnicalServiceRequestCommandFailure.OrganizationNotFound());
         }
 
@@ -97,6 +103,15 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
                 return Result.failure(new TechnicalServiceRequestCommandFailure.DuplicateActiveIncidentRequest());
             }
         }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_MAINTENANCE
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Technical service request creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_MAINTENANCE);
+            return Result.failure(new TechnicalServiceRequestCommandFailure.PlanLimitExceeded(entitlement.get()));
+        }
 
         var request = technicalServiceRequestRepository.save(new TechnicalServiceRequest(command, asset.orElseThrow()));
         log.info(
@@ -123,7 +138,7 @@ public class TechnicalServiceRequestCommandServiceImpl implements TechnicalServi
     public Result<TechnicalServiceRequest, TechnicalServiceRequestCommandFailure> handle(
             UpdateTechnicalServiceRequestStatusCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new TechnicalServiceRequestCommandFailure.OrganizationNotFound());
         }
 

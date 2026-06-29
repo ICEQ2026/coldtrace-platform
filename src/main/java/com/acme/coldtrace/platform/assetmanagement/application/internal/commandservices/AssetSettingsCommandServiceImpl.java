@@ -6,7 +6,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.SaveAssetSettingsCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetSettingsRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.iam.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

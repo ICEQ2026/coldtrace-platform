@@ -1,7 +1,8 @@
 package com.acme.coldtrace.platform.maintenancemanagement.application.internal.commandservices;
 
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.MaintenanceScheduleCommandFailure;
 import com.acme.coldtrace.platform.maintenancemanagement.application.commandservices.MaintenanceScheduleCommandService;
 import com.acme.coldtrace.platform.maintenancemanagement.domain.model.aggregates.MaintenanceSchedule;
@@ -12,6 +13,8 @@ import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_MAINTENANCE;
 
 /**
  * Application service implementation for maintenance schedule command operations.
@@ -27,17 +30,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MaintenanceScheduleCommandServiceImpl implements MaintenanceScheduleCommandService {
     private final MaintenanceScheduleRepository maintenanceScheduleRepository;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
     private final AssetManagementContextFacade assetManagementContextFacade;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public MaintenanceScheduleCommandServiceImpl(
             MaintenanceScheduleRepository maintenanceScheduleRepository,
-            IdentityAccessContextFacade identityAccessContextFacade,
-            AssetManagementContextFacade assetManagementContextFacade
+            IamContextFacade iamContextFacade,
+            AssetManagementContextFacade assetManagementContextFacade,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.maintenanceScheduleRepository = maintenanceScheduleRepository;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.assetManagementContextFacade = assetManagementContextFacade;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -52,7 +58,7 @@ public class MaintenanceScheduleCommandServiceImpl implements MaintenanceSchedul
     public Result<MaintenanceSchedule, MaintenanceScheduleCommandFailure> handle(
             CreateMaintenanceScheduleCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for maintenance schedule creation: organizationId={}",
                     command.organizationId());
             return Result.failure(new MaintenanceScheduleCommandFailure.OrganizationNotFound());
@@ -65,7 +71,7 @@ public class MaintenanceScheduleCommandServiceImpl implements MaintenanceSchedul
             return Result.failure(new MaintenanceScheduleCommandFailure.AssetNotFound());
         }
         if (command.responsibleUserId() != null &&
-                !identityAccessContextFacade.userExistsByIdAndOrganizationId(
+                !iamContextFacade.userExistsByIdAndOrganizationId(
                         command.organizationId(),
                         command.responsibleUserId()
                 )) {
@@ -77,6 +83,15 @@ public class MaintenanceScheduleCommandServiceImpl implements MaintenanceSchedul
             log.warn("Duplicate active maintenance schedule rejected: organizationId={}, assetId={}",
                     command.organizationId(), command.assetId());
             return Result.failure(new MaintenanceScheduleCommandFailure.DuplicateActiveSchedule());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_MAINTENANCE
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Maintenance schedule creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_MAINTENANCE);
+            return Result.failure(new MaintenanceScheduleCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
 
         var schedule = new MaintenanceSchedule(command);
@@ -98,7 +113,7 @@ public class MaintenanceScheduleCommandServiceImpl implements MaintenanceSchedul
     public Result<MaintenanceSchedule, MaintenanceScheduleCommandFailure> handle(
             UpdateMaintenanceScheduleStatusCommand command
     ) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             return Result.failure(new MaintenanceScheduleCommandFailure.OrganizationNotFound());
         }
         var schedule = maintenanceScheduleRepository.findByIdAndOrganizationId(

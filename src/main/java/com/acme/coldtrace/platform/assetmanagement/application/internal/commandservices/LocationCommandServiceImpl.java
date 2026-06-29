@@ -6,7 +6,8 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Locat
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateLocationCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateLocationCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.LocationRepository;
-import com.acme.coldtrace.platform.identityaccess.domain.repositories.OrganizationRepository;
+import com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade;
+import com.acme.coldtrace.platform.iam.domain.repositories.OrganizationRepository;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Location.ORGANIZATION_ID_NAME_UNIQUE_CONSTRAINT;
+import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_LOCATIONS;
 
 /**
  * Application service implementation for location command operations.
@@ -27,13 +29,16 @@ public class LocationCommandServiceImpl implements LocationCommandService {
 
     private final LocationRepository locationRepository;
     private final OrganizationRepository organizationRepository;
+    private final SubscriptionBillingContextFacade subscriptionBillingContextFacade;
 
     public LocationCommandServiceImpl(
             LocationRepository locationRepository,
-            OrganizationRepository organizationRepository
+            OrganizationRepository organizationRepository,
+            SubscriptionBillingContextFacade subscriptionBillingContextFacade
     ) {
         this.locationRepository = locationRepository;
         this.organizationRepository = organizationRepository;
+        this.subscriptionBillingContextFacade = subscriptionBillingContextFacade;
     }
 
     /**
@@ -54,6 +59,15 @@ public class LocationCommandServiceImpl implements LocationCommandService {
             log.warn("Duplicate location name detected: organizationId={}, name={}",
                     command.organizationId(), command.name());
             return Result.failure(new LocationCommandFailure.DuplicateName());
+        }
+        var entitlement = subscriptionBillingContextFacade.checkEntitlement(
+                command.organizationId(),
+                ENTITLEMENT_LOCATIONS
+        );
+        if (entitlement.isPresent() && !Boolean.TRUE.equals(entitlement.get().enabled())) {
+            log.warn("Location creation blocked by plan limit: organizationId={}, entitlement={}",
+                    command.organizationId(), ENTITLEMENT_LOCATIONS);
+            return Result.failure(new LocationCommandFailure.PlanLimitExceeded(entitlement.get()));
         }
         try {
             var location = locationRepository.save(new Location(command));

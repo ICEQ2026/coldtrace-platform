@@ -9,11 +9,12 @@ import com.acme.coldtrace.platform.alerts.domain.model.commands.CreateIncidentCo
 import com.acme.coldtrace.platform.alerts.domain.model.commands.EscalateIncidentCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.RegisterIncidentCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentCommand;
+import com.acme.coldtrace.platform.alerts.domain.model.commands.ResolveIncidentWithCorrectiveActionCommand;
 import com.acme.coldtrace.platform.alerts.domain.repositories.IncidentRepository;
 import com.acme.coldtrace.platform.alerts.domain.repositories.NotificationRepository;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade;
 import com.acme.coldtrace.platform.assetmanagement.interfaces.acl.AssetManagementContextFacade.IoTDeviceSnapshot;
-import com.acme.coldtrace.platform.identityaccess.interfaces.acl.IdentityAccessContextFacade;
+import com.acme.coldtrace.platform.iam.interfaces.acl.IamContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade;
 import com.acme.coldtrace.platform.monitoring.interfaces.acl.MonitoringContextFacade.SensorReadingSnapshot;
 import com.acme.coldtrace.platform.shared.application.result.Result;
@@ -40,20 +41,20 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     private final NotificationRepository notificationRepository;
     private final AssetManagementContextFacade assetManagementContextFacade;
     private final MonitoringContextFacade monitoringContextFacade;
-    private final IdentityAccessContextFacade identityAccessContextFacade;
+    private final IamContextFacade iamContextFacade;
 
     public IncidentCommandServiceImpl(
             IncidentRepository incidentRepository,
             NotificationRepository notificationRepository,
             AssetManagementContextFacade assetManagementContextFacade,
             MonitoringContextFacade monitoringContextFacade,
-            IdentityAccessContextFacade identityAccessContextFacade
+            IamContextFacade iamContextFacade
     ) {
         this.incidentRepository = incidentRepository;
         this.notificationRepository = notificationRepository;
         this.assetManagementContextFacade = assetManagementContextFacade;
         this.monitoringContextFacade = monitoringContextFacade;
-        this.identityAccessContextFacade = identityAccessContextFacade;
+        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -65,7 +66,7 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     @Override
     @Transactional
     public Result<Incident, IncidentCommandFailure> handle(CreateIncidentCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for incident creation: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
         }
@@ -153,7 +154,7 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     @Override
     @Transactional
     public Result<Incident, IncidentCommandFailure> handle(AcknowledgeIncidentCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for incident acknowledgement: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
         }
@@ -193,7 +194,7 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     @Override
     @Transactional
     public Result<Incident, IncidentCommandFailure> handle(EscalateIncidentCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for incident escalation: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
         }
@@ -232,7 +233,7 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     @Override
     @Transactional
     public Result<Incident, IncidentCommandFailure> handle(RegisterIncidentCorrectiveActionCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for incident corrective action: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
         }
@@ -266,7 +267,7 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     @Override
     @Transactional
     public Result<Incident, IncidentCommandFailure> handle(ResolveIncidentCommand command) {
-        if (!identityAccessContextFacade.organizationExists(command.organizationId())) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
             log.warn("Organization not found for incident resolution: organizationId={}", command.organizationId());
             return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
         }
@@ -293,6 +294,58 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
         emitNotification(resolvedIncident, Notification.incidentResolved(resolvedIncident));
 
         log.info("Incident resolved: id={}, organizationId={}",
+                resolvedIncident.getId(), resolvedIncident.getOrganizationId());
+        return Result.success(resolvedIncident);
+    }
+
+    /**
+     * Handles resolution of an incident with final operator-approved corrective action.
+     *
+     * @param command combined corrective action and resolution command
+     * @return success with resolved incident or failure with command error
+     */
+    @Override
+    @Transactional
+    public Result<Incident, IncidentCommandFailure> handle(ResolveIncidentWithCorrectiveActionCommand command) {
+        if (!iamContextFacade.organizationExists(command.organizationId())) {
+            log.warn("Organization not found for incident approval resolution: organizationId={}",
+                    command.organizationId());
+            return Result.failure(new IncidentCommandFailure.OrganizationNotFound());
+        }
+
+        var incident = incidentRepository.findByIdAndOrganizationId(command.incidentId(), command.organizationId());
+        if (incident.isEmpty()) {
+            log.warn("Incident not found for approval resolution: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.IncidentNotFound());
+        }
+        if (incident.get().isResolved()) {
+            log.warn("Incident already resolved before approval resolution: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.AlreadyResolved());
+        }
+        if (!incident.get().isOpen() && !incident.get().isAcknowledged()) {
+            log.warn("Invalid approval resolution transition: organizationId={}, incidentId={}",
+                    command.organizationId(), command.incidentId());
+            return Result.failure(new IncidentCommandFailure.InvalidLifecycleTransition());
+        }
+
+        incident.get().registerCorrectiveAction(new RegisterIncidentCorrectiveActionCommand(
+                command.organizationId(),
+                command.incidentId(),
+                command.correctiveAction(),
+                command.resolvedBy()
+        ));
+        incident.get().resolve(new ResolveIncidentCommand(
+                command.organizationId(),
+                command.incidentId(),
+                command.resolvedBy(),
+                command.resolutionNotes()
+        ));
+        var resolvedIncident = incidentRepository.save(incident.get());
+        emitNotification(resolvedIncident, Notification.incidentResolved(resolvedIncident));
+
+        log.info("Incident resolved from approved AI plan: id={}, organizationId={}",
                 resolvedIncident.getId(), resolvedIncident.getOrganizationId());
         return Result.success(resolvedIncident);
     }
