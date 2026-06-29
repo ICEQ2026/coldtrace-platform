@@ -31,4 +31,13 @@ public interface SubscriptionPlanPersistenceRepository extends JpaRepository<Sub
      */
     @EntityGraph(attributePaths = "includedFeatures")
     Optional<SubscriptionPlanPersistenceEntity> findByCode(String code);
+
+    /**
+     * Finds a plan by configured Stripe price id.
+     *
+     * @param stripePriceId Stripe price id
+     * @return persistence entity when found
+     */
+    @EntityGraph(attributePaths = "includedFeatures")
+    Optional<SubscriptionPlanPersistenceEntity> findByStripePriceId(String stripePriceId);
 }

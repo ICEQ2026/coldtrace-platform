@@ -270,6 +270,50 @@ Expected result:
 - Missing Stripe secret key or redirect URLs return `503`.
 - ColdTrace never receives card numbers; checkout is hosted by Stripe.
 
+## Stripe Webhook Subscription Sync
+
+TS27 synchronizes local organization subscriptions from signed Stripe webhooks.
+The webhook endpoint is public for Stripe delivery but does not trust unsigned
+JSON. It verifies the raw request body with `Stripe-Signature` and the backend
+webhook signing secret before changing any ColdTrace subscription record:
+
+```text
+POST /api/v1/billing/stripe/webhooks
+```
+
+Required environment for local test-mode validation:
+
+```bash
+export STRIPE_WEBHOOK_SECRET=<stripe-webhook-signing-secret>
+```
+
+When using the Stripe CLI locally, forward events to the backend and copy the
+printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`:
+
+```bash
+stripe listen --forward-to localhost:8080/api/v1/billing/stripe/webhooks
+```
+
+Handled events:
+
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid`
+- `invoice.payment_failed`
+
+Expected behavior:
+
+- Valid signed events update the organization subscription by Stripe customer,
+  subscription id, checkout metadata, or configured price id.
+- The backend records processed event ids, so repeated webhook deliveries are
+  acknowledged without duplicate state mutations.
+- Unsupported signed events are safely acknowledged as ignored.
+- Missing or invalid `Stripe-Signature` returns `400`.
+- Missing `STRIPE_WEBHOOK_SECRET` returns `503`.
+- Checkout success in the frontend is only advisory until the webhook updates
+  the local subscription state.
+
 ## Production Deployment
 
 The production backend is deployed on Google Cloud Run and uses Google Cloud SQL
@@ -313,6 +357,7 @@ AI_REQUEST_TIMEOUT=30s
 STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
 STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
 STRIPE_SECRET_KEY=<stripe-test-secret-key>
+STRIPE_WEBHOOK_SECRET=<stripe-webhook-signing-secret>
 BILLING_CHECKOUT_SUCCESS_URL=https://<frontend-domain>/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}
 BILLING_CHECKOUT_CANCEL_URL=https://<frontend-domain>/identity-access/billing?checkout=cancel
 ```

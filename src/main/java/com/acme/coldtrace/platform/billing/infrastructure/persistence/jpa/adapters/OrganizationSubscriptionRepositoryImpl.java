@@ -36,6 +36,24 @@ public class OrganizationSubscriptionRepositoryImpl implements OrganizationSubsc
      * {@inheritDoc}
      */
     @Override
+    public Optional<OrganizationSubscription> findByProviderCustomerId(String providerCustomerId) {
+        return organizationSubscriptionPersistenceRepository.findByProviderCustomerId(providerCustomerId)
+                .map(OrganizationSubscriptionPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<OrganizationSubscription> findByProviderSubscriptionId(String providerSubscriptionId) {
+        return organizationSubscriptionPersistenceRepository.findByProviderSubscriptionId(providerSubscriptionId)
+                .map(OrganizationSubscriptionPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public OrganizationSubscription save(OrganizationSubscription subscription) {
         var entity = subscription.getId() == null
                 ? organizationSubscriptionPersistenceRepository.findByOrganizationId(subscription.getOrganizationId())

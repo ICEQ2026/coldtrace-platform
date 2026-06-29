@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Environment-driven Stripe checkout configuration.
  *
  * @param secretKey Stripe secret key used server-side
+ * @param webhookSigningSecret Stripe webhook endpoint signing secret
  * @param checkoutSuccessUrl frontend URL after successful checkout
  * @param checkoutCancelUrl frontend URL after canceled checkout
  * @since 1.0
@@ -13,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "coldtrace.billing.stripe")
 public record BillingStripeProperties(
         String secretKey,
+        String webhookSigningSecret,
         String checkoutSuccessUrl,
         String checkoutCancelUrl
 ) {
@@ -21,6 +23,7 @@ public record BillingStripeProperties(
      */
     public BillingStripeProperties {
         secretKey = normalizeOptionalText(secretKey);
+        webhookSigningSecret = normalizeOptionalText(webhookSigningSecret);
         checkoutSuccessUrl = normalizeOptionalText(checkoutSuccessUrl);
         checkoutCancelUrl = normalizeOptionalText(checkoutCancelUrl);
     }
@@ -30,6 +33,13 @@ public record BillingStripeProperties(
      */
     public boolean hasCheckoutConfiguration() {
         return secretKey != null && checkoutSuccessUrl != null && checkoutCancelUrl != null;
+    }
+
+    /**
+     * @return true when signed Stripe webhook processing can be enabled
+     */
+    public boolean hasWebhookConfiguration() {
+        return webhookSigningSecret != null;
     }
 
     private static String normalizeOptionalText(String value) {

@@ -21,4 +21,20 @@ public interface OrganizationSubscriptionPersistenceRepository
      * @return persistence entity when found
      */
     Optional<OrganizationSubscriptionPersistenceEntity> findByOrganizationId(Long organizationId);
+
+    /**
+     * Finds a subscription by provider customer id.
+     *
+     * @param providerCustomerId provider customer id
+     * @return persistence entity when found
+     */
+    Optional<OrganizationSubscriptionPersistenceEntity> findByProviderCustomerId(String providerCustomerId);
+
+    /**
+     * Finds a subscription by provider subscription id.
+     *
+     * @param providerSubscriptionId provider subscription id
+     * @return persistence entity when found
+     */
+    Optional<OrganizationSubscriptionPersistenceEntity> findByProviderSubscriptionId(String providerSubscriptionId);
 }

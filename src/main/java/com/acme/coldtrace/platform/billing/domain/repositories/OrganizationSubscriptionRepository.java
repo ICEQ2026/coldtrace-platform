@@ -19,6 +19,22 @@ public interface OrganizationSubscriptionRepository {
     Optional<OrganizationSubscription> findByOrganizationId(Long organizationId);
 
     /**
+     * Finds a subscription by external provider customer identifier.
+     *
+     * @param providerCustomerId provider customer identifier
+     * @return subscription when found
+     */
+    Optional<OrganizationSubscription> findByProviderCustomerId(String providerCustomerId);
+
+    /**
+     * Finds a subscription by external provider subscription identifier.
+     *
+     * @param providerSubscriptionId provider subscription identifier
+     * @return subscription when found
+     */
+    Optional<OrganizationSubscription> findByProviderSubscriptionId(String providerSubscriptionId);
+
+    /**
      * Persists an organization subscription.
      *
      * @param subscription organization subscription
