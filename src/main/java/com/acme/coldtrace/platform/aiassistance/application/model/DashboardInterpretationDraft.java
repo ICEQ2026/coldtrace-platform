@@ -2,8 +2,6 @@ package com.acme.coldtrace.platform.aiassistance.application.model;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -21,12 +19,12 @@ import java.util.List;
  */
 @JsonPropertyOrder({"summary", "attentionLevel", "insights", "risks", "recommendedActions", "uncertaintyNotes"})
 public record DashboardInterpretationDraft(
-        @NotBlank @Size(max = 500) String summary,
-        @NotBlank @Size(max = 80) String attentionLevel,
-        @NotEmpty @Size(max = 8) List<@Valid DashboardInsightDraft> insights,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> risks,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> recommendedActions,
-        @NotEmpty @Size(max = 8) List<@NotBlank @Size(max = 240) String> uncertaintyNotes
+        @Size(max = 500) String summary,
+        @Size(max = 80) String attentionLevel,
+        @Size(max = 8) List<@Valid DashboardInsightDraft> insights,
+        @Size(max = 8) List<@Size(max = 240) String> risks,
+        @Size(max = 8) List<@Size(max = 240) String> recommendedActions,
+        @Size(max = 8) List<@Size(max = 240) String> uncertaintyNotes
 ) {
     public DashboardInterpretationDraft {
         insights = insights == null ? List.of() : List.copyOf(insights);

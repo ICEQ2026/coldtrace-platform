@@ -4,6 +4,8 @@ import com.acme.coldtrace.platform.aiassistance.application.commandservices.AiAs
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.DashboardAiInterpretationCommandFailure;
 import com.acme.coldtrace.platform.aiassistance.application.commandservices.DashboardAiInterpretationCommandService;
 import com.acme.coldtrace.platform.aiassistance.application.model.DashboardAiInterpretation;
+import com.acme.coldtrace.platform.aiassistance.application.model.DashboardInsightDraft;
+import com.acme.coldtrace.platform.aiassistance.application.model.DashboardInterpretationDraft;
 import com.acme.coldtrace.platform.aiassistance.application.model.DashboardSourceMetric;
 import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateDashboardAiInterpretationCommand;
 import com.acme.coldtrace.platform.aiassistance.domain.model.commands.GenerateDashboardInterpretationCommand;
@@ -34,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -97,14 +100,21 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
             return Result.failure(new DashboardAiInterpretationCommandFailure.OrganizationNotFound());
         }
 
-        var context = buildDashboardInterpretationContext(command.organizationId(), command.question());
+        var context = buildDashboardInterpretationContext(
+                command.organizationId(),
+                command.question(),
+                resolveResponseLanguage(command)
+        );
         var serializedContext = serializeContext(context);
         if (serializedContext.isFailure()) {
             return Result.failure(serializedContext.failure().orElseThrow());
         }
 
         var generatedInterpretation = aiAssistanceCommandService.handle(
-                new GenerateDashboardInterpretationCommand(serializedContext.success().orElseThrow())
+                new GenerateDashboardInterpretationCommand(
+                        serializedContext.success().orElseThrow(),
+                        context.responseLanguage()
+                )
         );
         if (generatedInterpretation.isFailure()) {
             return Result.failure(new DashboardAiInterpretationCommandFailure.ProviderFailure(
@@ -113,12 +123,17 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
         }
 
         var response = generatedInterpretation.success().orElseThrow();
+        var sanitizedInterpretation = sanitizeDashboardInterpretation(response.content(), context);
+        var interpretation = localizeDashboardInterpretation(
+                sanitizedInterpretation,
+                context.responseLanguage()
+        );
         log.info("AI dashboard interpretation generated: organizationId={}, modelProvider={}, modelName={}",
                 command.organizationId(), response.modelProvider(), response.modelName());
         return Result.success(new DashboardAiInterpretation(
                 command.organizationId(),
                 command.question(),
-                response.content(),
+                interpretation,
                 context.sourceMetrics(),
                 response.modelProvider(),
                 response.modelName(),
@@ -136,7 +151,10 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
         }
     }
 
-    private DashboardInterpretationContext buildDashboardInterpretationContext(Long organizationId, String question) {
+    private DashboardInterpretationContext buildDashboardInterpretationContext(
+            Long organizationId,
+            String question,
+            String responseLanguage) {
         var readings = monitoringContextFacade.fetchSensorReadingsByOrganizationId(organizationId).stream()
                 .sorted(this::compareReadingByRecordedAtDesc)
                 .toList();
@@ -167,6 +185,7 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
                 "dashboard-ai-interpretation.v1",
                 organizationId,
                 question,
+                responseLanguage,
                 metrics,
                 sourceMetrics,
                 readings.stream().limit(MAX_RECENT_READINGS).map(this::toReadingEvidenceContext).toList(),
@@ -188,6 +207,106 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
                 buildEvidenceNotes(readings, incidents, assets, devices, gateways, reports,
                         maintenanceSchedules, technicalServiceRequests)
         );
+    }
+
+    private String resolveResponseLanguage(GenerateDashboardAiInterpretationCommand command) {
+        var preferredLanguage = resolveLanguagePreference(command.preferredLanguage());
+        if (preferredLanguage != null) {
+            return preferredLanguage;
+        }
+
+        var acceptLanguage = resolveAcceptLanguage(command.acceptLanguageHeader());
+        if (acceptLanguage != null) {
+            return acceptLanguage;
+        }
+
+        return detectResponseLanguage(command.question());
+    }
+
+    private String resolveAcceptLanguage(String acceptLanguageHeader) {
+        if (acceptLanguageHeader == null || acceptLanguageHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Locale.LanguageRange.parse(acceptLanguageHeader).stream()
+                    .map(Locale.LanguageRange::getRange)
+                    .map(this::resolveLanguagePreference)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        } catch (IllegalArgumentException exception) {
+            log.debug("Ignoring invalid Accept-Language header for dashboard AI interpretation");
+            return null;
+        }
+    }
+
+    private String resolveLanguagePreference(String languagePreference) {
+        if (languagePreference == null || languagePreference.isBlank()) {
+            return null;
+        }
+
+        var normalized = languagePreference.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('_', '-');
+        if (normalized.equals("spanish") || normalized.equals("espanol")
+                || normalized.equals("español") || normalized.startsWith("es")) {
+            return "Spanish";
+        }
+        if (normalized.equals("english") || normalized.startsWith("en")) {
+            return "English";
+        }
+        return null;
+    }
+
+    private String detectResponseLanguage(String question) {
+        if (question == null || question.isBlank()) {
+            return "English";
+        }
+
+        var normalized = question.toLowerCase(Locale.ROOT);
+        if (containsSpanishMarker(normalized) || containsSpanishToken(normalized)) {
+            return "Spanish";
+        }
+        return "English";
+    }
+
+    private boolean containsSpanishMarker(String normalized) {
+        return normalized.chars()
+                .anyMatch(character -> "áéíóúñü¿¡".indexOf(character) >= 0);
+    }
+
+    private boolean containsSpanishToken(String normalized) {
+        var paddedQuestion = " " + normalized.replaceAll("[^\\p{L}\\p{N}]+", " ") + " ";
+        var spanishTokens = List.of(
+                "actualmente",
+                "cual",
+                "cuales",
+                "cuál",
+                "cuáles",
+                "cuando",
+                "cuándo",
+                "cuanto",
+                "cuánto",
+                "detectada",
+                "detectadas",
+                "detectado",
+                "detectados",
+                "donde",
+                "dónde",
+                "fueron",
+                "incidencia",
+                "incidencias",
+                "primero",
+                "que",
+                "qué",
+                "revisar",
+                "riesgo",
+                "riesgos",
+                "ultimas",
+                "últimas"
+        );
+        return spanishTokens.stream()
+                .anyMatch(token -> paddedQuestion.contains(" " + token + " "));
     }
 
     private List<AssetSnapshot> fetchReferencedAssets(
@@ -631,10 +750,229 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
         return normalized.substring(0, Math.max(0, maxLength - 3)) + "...";
     }
 
+    private DashboardInterpretationDraft localizeDashboardInterpretation(
+            DashboardInterpretationDraft interpretation,
+            String responseLanguage) {
+        if (!"Spanish".equalsIgnoreCase(responseLanguage)) {
+            return interpretation;
+        }
+        return new DashboardInterpretationDraft(
+                interpretation.summary(),
+                localizeSpanishAttentionLevel(interpretation.attentionLevel()),
+                interpretation.insights(),
+                interpretation.risks(),
+                interpretation.recommendedActions(),
+                interpretation.uncertaintyNotes()
+        );
+    }
+
+    private String localizeSpanishAttentionLevel(String attentionLevel) {
+        if (attentionLevel == null || attentionLevel.isBlank()) {
+            return attentionLevel;
+        }
+        var normalized = attentionLevel.trim().toLowerCase(Locale.ROOT);
+        if (normalized.contains("critical")) {
+            return "atención crítica";
+        }
+        if (normalized.contains("attention") || normalized.contains("review")) {
+            return "revisión recomendada";
+        }
+        if (normalized.contains("stable")) {
+            return "estable";
+        }
+        return attentionLevel;
+    }
+
+    private DashboardInterpretationDraft sanitizeDashboardInterpretation(
+            DashboardInterpretationDraft interpretation,
+            DashboardInterpretationContext context) {
+        return new DashboardInterpretationDraft(
+                sanitizeGeneratedText(interpretation.summary(), 500, fallbackSummary(context)),
+                sanitizeGeneratedText(interpretation.attentionLevel(), 80, fallbackAttentionLevel(context)),
+                sanitizeInsights(interpretation.insights(), context),
+                sanitizeGeneratedTextList(interpretation.risks(), fallbackRisks(context), 2, 2, 240),
+                sanitizeGeneratedTextList(interpretation.recommendedActions(),
+                        fallbackRecommendedActions(context), 2, 2, 240),
+                sanitizeGeneratedTextList(interpretation.uncertaintyNotes(),
+                        fallbackUncertaintyNotes(context), 1, 1, 240)
+        );
+    }
+
+    private List<DashboardInsightDraft> sanitizeInsights(
+            List<DashboardInsightDraft> insights,
+            DashboardInterpretationContext context) {
+        var sanitized = new ArrayList<DashboardInsightDraft>();
+        if (insights != null) {
+            insights.stream()
+                    .filter(Objects::nonNull)
+                    .map(this::sanitizeInsight)
+                    .filter(Objects::nonNull)
+                    .limit(3)
+                    .forEach(sanitized::add);
+        }
+        fallbackInsights(context).stream()
+                .limit(Math.max(0, 3 - sanitized.size()))
+                .forEach(sanitized::add);
+        return sanitized;
+    }
+
+    private DashboardInsightDraft sanitizeInsight(DashboardInsightDraft insight) {
+        var title = sanitizeGeneratedText(insight.title(), 100, null);
+        var metric = sanitizeGeneratedText(insight.metric(), 100, null);
+        var interpretation = sanitizeGeneratedText(insight.interpretation(), 360, null);
+        var severity = sanitizeGeneratedText(insight.severity(), 80, null);
+        if (title == null || metric == null || interpretation == null || severity == null) {
+            return null;
+        }
+        return new DashboardInsightDraft(title, metric, interpretation, severity);
+    }
+
+    private List<String> sanitizeGeneratedTextList(
+            List<String> values,
+            List<String> fallbacks,
+            int minimumSize,
+            int maximumSize,
+            int maximumTextLength) {
+        var sanitized = new ArrayList<String>();
+        if (values != null) {
+            values.stream()
+                    .map(value -> sanitizeGeneratedText(value, maximumTextLength, null))
+                    .filter(Objects::nonNull)
+                    .limit(maximumSize)
+                    .forEach(sanitized::add);
+        }
+        fallbacks.stream()
+                .map(value -> sanitizeGeneratedText(value, maximumTextLength, null))
+                .filter(Objects::nonNull)
+                .limit(Math.max(0, minimumSize - sanitized.size()))
+                .forEach(sanitized::add);
+        return sanitized.stream().limit(maximumSize).toList();
+    }
+
+    private String sanitizeGeneratedText(String value, int maxLength, String fallback) {
+        var normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            normalized = fallback;
+        }
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+        normalized = normalized.replace("&#x0A;", " ")
+                .replace("\\n", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return limitText(normalized, maxLength);
+    }
+
+    private String fallbackSummary(DashboardInterpretationContext context) {
+        if ("Spanish".equalsIgnoreCase(context.responseLanguage())) {
+            return "El dashboard requiere revisión operativa con base en las métricas persistidas de ColdTrace.";
+        }
+        return "The dashboard requires operational review using persisted ColdTrace metrics.";
+    }
+
+    private String fallbackAttentionLevel(DashboardInterpretationContext context) {
+        var metrics = context.metrics();
+        if ((metrics.openIncidents() != null && metrics.openIncidents() > 0)
+                || (metrics.outOfRangeReadings() != null && metrics.outOfRangeReadings() > 0)) {
+            return "critical attention";
+        }
+        return "stable";
+    }
+
+    private List<DashboardInsightDraft> fallbackInsights(DashboardInterpretationContext context) {
+        var metrics = context.metrics();
+        if ("Spanish".equalsIgnoreCase(context.responseLanguage())) {
+            return List.of(
+                    new DashboardInsightDraft(
+                            "Cumplimiento térmico",
+                            "thermalCompliancePercentage",
+                            "El cumplimiento térmico se calcula desde las lecturas persistidas del dashboard.",
+                            fallbackSeverity(metrics.thermalCompliancePercentage())),
+                    new DashboardInsightDraft(
+                            "Presión de incidencias",
+                            "openIncidents",
+                            "El dashboard registra %s incidencia(s) abierta(s).".formatted(metrics.openIncidents()),
+                            metrics.openIncidents() != null && metrics.openIncidents() > 0
+                                    ? "atención"
+                                    : "estable"),
+                    new DashboardInsightDraft(
+                            "Seguimiento de mantenimiento",
+                            "openTechnicalServiceRequests",
+                            "Las solicitudes técnicas abiertas ayudan a priorizar acciones correctivas.",
+                            metrics.openTechnicalServiceRequests() != null && metrics.openTechnicalServiceRequests() > 0
+                                    ? "media"
+                                    : "estable")
+            );
+        }
+        return List.of(
+                new DashboardInsightDraft(
+                        "Thermal compliance",
+                        "thermalCompliancePercentage",
+                        "Thermal compliance is calculated from persisted dashboard readings.",
+                        fallbackSeverity(metrics.thermalCompliancePercentage())),
+                new DashboardInsightDraft(
+                        "Incident pressure",
+                        "openIncidents",
+                        "The dashboard records %s open incident(s).".formatted(metrics.openIncidents()),
+                        metrics.openIncidents() != null && metrics.openIncidents() > 0
+                                ? "attention"
+                                : "stable"),
+                new DashboardInsightDraft(
+                        "Maintenance follow-up",
+                        "openTechnicalServiceRequests",
+                        "Open technical service requests help prioritize corrective actions.",
+                        metrics.openTechnicalServiceRequests() != null && metrics.openTechnicalServiceRequests() > 0
+                                ? "medium"
+                                : "stable")
+        );
+    }
+
+    private String fallbackSeverity(Double compliancePercentage) {
+        if (compliancePercentage == null) {
+            return "limited evidence";
+        }
+        return compliancePercentage >= 95.0 ? "stable" : "attention";
+    }
+
+    private List<String> fallbackRisks(DashboardInterpretationContext context) {
+        if ("Spanish".equalsIgnoreCase(context.responseLanguage())) {
+            return List.of(
+                    "Las incidencias abiertas pueden mantener riesgo operativo hasta su cierre manual.",
+                    "Las lecturas fuera de rango requieren validación antes de confirmar cumplimiento."
+            );
+        }
+        return List.of(
+                "Open incidents can keep operational risk active until manual closure.",
+                "Out-of-range readings require validation before confirming compliance."
+        );
+    }
+
+    private List<String> fallbackRecommendedActions(DashboardInterpretationContext context) {
+        if ("Spanish".equalsIgnoreCase(context.responseLanguage())) {
+            return List.of(
+                    "Revisar primero las incidencias críticas y sus activos asociados.",
+                    "Confirmar evidencia correctiva antes de cerrar alertas o reportes."
+            );
+        }
+        return List.of(
+                "Review critical incidents and their associated assets first.",
+                "Confirm corrective evidence before closing alerts or reports."
+        );
+    }
+
+    private List<String> fallbackUncertaintyNotes(DashboardInterpretationContext context) {
+        if ("Spanish".equalsIgnoreCase(context.responseLanguage())) {
+            return List.of("La interpretación es advisory y depende de la completitud de los registros persistidos.");
+        }
+        return List.of("The interpretation is advisory and depends on the completeness of persisted records.");
+    }
+
     private record DashboardInterpretationContext(
             String contextVersion,
             Long organizationId,
             String operatorQuestion,
+            String responseLanguage,
             DashboardMetricContext metrics,
             List<DashboardSourceMetric> sourceMetrics,
             List<ReadingEvidenceContext> recentReadings,

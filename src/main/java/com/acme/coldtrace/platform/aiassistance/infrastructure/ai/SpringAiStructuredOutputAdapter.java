@@ -9,13 +9,16 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -137,27 +140,55 @@ public class SpringAiStructuredOutputAdapter implements AiStructuredOutputPort {
             AiStructuredPrompt structuredPrompt,
             BeanOutputConverter<?> outputConverter) {
         var variables = new HashMap<>(structuredPrompt.variables());
-        variables.put("format", outputConverter.getFormat());
+        variables.put("format", outputFormatInstructions(outputConverter));
         var userMessage = PromptTemplate.builder()
                 .template(structuredPrompt.userTemplate())
                 .variables(variables)
                 .build()
                 .createMessage();
-        var prompt = new Prompt(List.of(
+        var prompt = buildPrompt(
+                outputConverter,
                 new SystemMessage(structuredPrompt.systemInstruction()),
                 userMessage
-        ));
+        );
         return chatClientBuilder.build()
                 .prompt(prompt)
                 .call()
                 .content();
     }
 
+    private String outputFormatInstructions(BeanOutputConverter<?> outputConverter) {
+        if ("ollama".equals(properties.provider())) {
+            return """
+                    Return one JSON object matching the required response shape.
+                    Fill every required field with values derived from the provided context.
+                    Do not return the schema, examples, empty objects, or empty arrays.
+                    """;
+        }
+        return outputConverter.getFormat();
+    }
+
+    private Prompt buildPrompt(
+            BeanOutputConverter<?> outputConverter,
+            SystemMessage systemMessage,
+            Message userMessage) {
+        var messages = List.of(systemMessage, userMessage);
+        if (!"ollama".equals(properties.provider())) {
+            return new Prompt(messages);
+        }
+
+        var options = OllamaChatOptions.builder()
+                .model(properties.modelName())
+                .format(outputConverter.getJsonSchemaMap())
+                .build();
+        return new Prompt(messages, options);
+    }
+
     private <T> Result<T, AiAssistanceFailure> convertStructuredOutput(
             String content,
             BeanOutputConverter<T> outputConverter) {
         try {
-            var output = outputConverter.convert(content);
+            var output = outputConverter.convert(extractStructuredJson(content));
             if (output == null) {
                 return Result.failure(new AiAssistanceFailure.InvalidStructuredOutput("empty structured output"));
             }
@@ -166,6 +197,69 @@ public class SpringAiStructuredOutputAdapter implements AiStructuredOutputPort {
             log.warn("AI structured output conversion failed", exception);
             return Result.failure(new AiAssistanceFailure.InvalidStructuredOutput("conversion failed"));
         }
+    }
+
+    private String extractStructuredJson(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+
+        var trimmedContent = content.trim();
+        var firstJsonValue = extractFirstBalancedJsonValue(trimmedContent);
+        return firstJsonValue == null ? trimmedContent : firstJsonValue;
+    }
+
+    private String extractFirstBalancedJsonValue(String content) {
+        var start = firstJsonValueStart(content);
+        if (start < 0) {
+            return null;
+        }
+
+        var expectedClosings = new ArrayDeque<Character>();
+        var inString = false;
+        var escaping = false;
+
+        for (int index = start; index < content.length(); index++) {
+            var character = content.charAt(index);
+            if (inString) {
+                if (escaping) {
+                    escaping = false;
+                } else if (character == '\\') {
+                    escaping = true;
+                } else if (character == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (character == '"') {
+                inString = true;
+            } else if (character == '{') {
+                expectedClosings.push('}');
+            } else if (character == '[') {
+                expectedClosings.push(']');
+            } else if ((character == '}' || character == ']') && !expectedClosings.isEmpty()
+                    && expectedClosings.peek() == character) {
+                expectedClosings.pop();
+                if (expectedClosings.isEmpty()) {
+                    return content.substring(start, index + 1).trim();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private int firstJsonValueStart(String content) {
+        var objectStart = content.indexOf('{');
+        var arrayStart = content.indexOf('[');
+        if (objectStart < 0) {
+            return arrayStart;
+        }
+        if (arrayStart < 0) {
+            return objectStart;
+        }
+        return Math.min(objectStart, arrayStart);
     }
 
     private <T> AiAssistanceFailure validateOutput(T output) {

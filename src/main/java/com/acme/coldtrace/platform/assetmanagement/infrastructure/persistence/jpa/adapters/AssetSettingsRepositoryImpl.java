@@ -5,6 +5,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetSett
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.assemblers.AssetSettingsPersistenceAssembler;
 import com.acme.coldtrace.platform.assetmanagement.infrastructure.persistence.jpa.repositories.AssetSettingsPersistenceRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,7 @@ import java.util.Optional;
  * @since 1.0
  */
 @Repository
+@Transactional(readOnly = true)
 public class AssetSettingsRepositoryImpl implements AssetSettingsRepository {
     private final AssetSettingsPersistenceRepository assetSettingsPersistenceRepository;
 
@@ -42,6 +44,7 @@ public class AssetSettingsRepositoryImpl implements AssetSettingsRepository {
     }
 
     @Override
+    @Transactional
     public AssetSettings save(AssetSettings assetSettings) {
         if (assetSettings.getId() == null) {
             var entity = AssetSettingsPersistenceAssembler.toPersistenceFromDomain(assetSettings);
