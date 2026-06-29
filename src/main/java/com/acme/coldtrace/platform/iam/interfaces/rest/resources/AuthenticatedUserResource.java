@@ -18,7 +18,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(
         name = "AuthenticatedUserResponse",
-        description = "Authenticated user information with JWT token"
+        description = "Authenticated user information with JWT token",
+        example = """
+                {
+                  "id": 1,
+                  "uuid": "USR-1",
+                  "organizationUserId": 1,
+                  "firstName": "Mauricio",
+                  "lastName": "Pajes",
+                  "email": "operator@coldtrace.test",
+                  "organizationId": 2,
+                  "roleId": 1,
+                  "token": "eyJhbGciOiJIUzUxMiJ9..."
+                }
+                """
 )
 public record AuthenticatedUserResource(
         @Schema(description = "User identifier", example = "1")

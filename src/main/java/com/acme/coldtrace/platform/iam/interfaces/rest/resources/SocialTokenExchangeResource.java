@@ -13,7 +13,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(
         name = "SocialTokenExchangeRequest",
-        description = "Social authentication payload containing either an ID token or an authorization code"
+        description = "Social authentication payload containing either an ID token or an authorization code",
+        example = """
+                {
+                  "idToken": "eyJhbGciOiJSUzI1NiJ9...",
+                  "authorizationCode": null,
+                  "redirectUri": "https://coldtrace-frontend-liard.vercel.app/identity-access/sign-in",
+                  "nonce": "nonce-123"
+                }
+                """
 )
 public record SocialTokenExchangeResource(
         @Schema(description = "Provider ID token returned by Google or Apple", example = "eyJhbGciOiJSUzI1NiJ9...")

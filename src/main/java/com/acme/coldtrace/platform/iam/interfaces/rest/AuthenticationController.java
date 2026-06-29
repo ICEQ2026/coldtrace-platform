@@ -18,9 +18,11 @@ import com.acme.coldtrace.platform.shared.interfaces.rest.resources.ErrorResourc
 import com.acme.coldtrace.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -69,14 +71,72 @@ public class AuthenticationController {
      */
     @Operation(
             summary = "User sign-in",
-            description = "Authenticates an organization user with email and password, then returns a JWT token")
+            description = "Authenticates an organization user with email and password. Copy the returned token and paste it in Swagger Authorize as bearerAuth before calling protected endpoints.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Existing ColdTrace user credentials",
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SignInResource.class),
+                            examples = @ExampleObject(
+                                    name = "Sign in with email and password",
+                                    value = """
+                                            {
+                                              "email": "operator@coldtrace.test",
+                                              "password": "ColdTrace123"
+                                            }
+                                            """
+                            ))))
+    @SecurityRequirements
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User authenticated successfully",
-                    content = @Content(schema = @Schema(implementation = AuthenticatedUserResource.class))),
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticatedUserResource.class),
+                            examples = @ExampleObject(
+                                    name = "Authenticated user with JWT",
+                                    value = """
+                                            {
+                                              "id": 1,
+                                              "uuid": "USR-1",
+                                              "organizationUserId": 1,
+                                              "firstName": "Mauricio",
+                                              "lastName": "Pajes",
+                                              "email": "operator@coldtrace.test",
+                                              "organizationId": 2,
+                                              "roleId": 1,
+                                              "token": "eyJhbGciOiJIUzUxMiJ9..."
+                                            }
+                                            """
+                            ))),
             @ApiResponse(responseCode = "400", description = "Malformed request",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class),
+                            examples = @ExampleObject(
+                                    name = "Validation error",
+                                    value = """
+                                            {
+                                              "code": "VALIDATION_ERROR",
+                                              "message": "email must be a valid email",
+                                              "details": "iam.authentication.error.validation"
+                                            }
+                                            """
+                            ))),
             @ApiResponse(responseCode = "401", description = "Invalid credentials",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class),
+                            examples = @ExampleObject(
+                                    name = "Invalid credentials",
+                                    value = """
+                                            {
+                                              "code": "INVALID_CREDENTIALS",
+                                              "message": "Invalid email or password",
+                                              "details": "iam.authentication.error.invalid-credentials"
+                                            }
+                                            """
+                            )))
     })
     @PostMapping("/sign-in")
     public ResponseEntity<?> signIn(@Valid @RequestBody SignInResource resource) {
@@ -102,18 +162,41 @@ public class AuthenticationController {
      */
     @Operation(
             summary = "Social provider sign-in",
-            description = "Validates a Google or Apple OIDC response server-side, links it to a local ColdTrace user, and returns a JWT token")
+            description = "Validates a Google or Apple OIDC response server-side, links it to a local ColdTrace user, and returns a JWT token",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Provider ID token or authorization code returned by Google or Apple",
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SocialTokenExchangeResource.class),
+                            examples = @ExampleObject(
+                                    name = "Provider token exchange",
+                                    value = """
+                                            {
+                                              "idToken": "eyJhbGciOiJSUzI1NiJ9...",
+                                              "authorizationCode": null,
+                                              "redirectUri": "https://coldtrace-frontend-liard.vercel.app/identity-access/sign-in",
+                                              "nonce": "nonce-123"
+                                            }
+                                            """
+                            ))))
+    @SecurityRequirements
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User authenticated successfully",
-                    content = @Content(schema = @Schema(implementation = AuthenticatedUserResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticatedUserResource.class))),
             @ApiResponse(responseCode = "400", description = "Malformed request",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "401", description = "Provider validation failed",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "422", description = "Social identity requires organization sign-up or invitation completion",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "503", description = "Provider configuration is missing",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class)))
     })
     @PostMapping("/social/{provider}/token-exchange")
     public ResponseEntity<?> socialSignIn(
@@ -142,16 +225,27 @@ public class AuthenticationController {
      */
     @Operation(
             summary = "Social provider profile preview",
-            description = "Validates a Google or Apple OIDC response server-side and returns verified profile data to prefill organization sign-up")
+            description = "Validates a Google or Apple OIDC response server-side and returns verified profile data to prefill organization sign-up",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Provider ID token or authorization code returned by Google or Apple",
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SocialTokenExchangeResource.class))))
+    @SecurityRequirements
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Social profile validated successfully",
-                    content = @Content(schema = @Schema(implementation = SocialIdentityProfileResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SocialIdentityProfileResource.class))),
             @ApiResponse(responseCode = "400", description = "Malformed request",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "401", description = "Provider validation failed",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "503", description = "Provider configuration is missing",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class)))
     })
     @PostMapping("/social/{provider}/profile-preview")
     public ResponseEntity<?> socialProfilePreview(
@@ -177,18 +271,43 @@ public class AuthenticationController {
      */
     @Operation(
             summary = "Social provider organization sign-up",
-            description = "Validates a Google or Apple OIDC response server-side, creates the organization and first user when needed, links the provider identity, and returns a JWT token")
+            description = "Validates a Google or Apple OIDC response server-side, creates the organization and first user when needed, links the provider identity, and returns a JWT token",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Provider token and organization onboarding data",
+                    content = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SocialOrganizationSignUpResource.class),
+                            examples = @ExampleObject(
+                                    name = "Social organization sign-up",
+                                    value = """
+                                            {
+                                              "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ...",
+                                              "authorizationCode": null,
+                                              "redirectUri": "https://coldtrace-frontend-liard.vercel.app/identity-access/sign-up",
+                                              "nonce": "nonce-123",
+                                              "organizationName": "ColdTrace Market",
+                                              "fullName": "Jane Smith"
+                                            }
+                                            """
+                            ))))
+    @SecurityRequirements
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Organization sign-up completed and user authenticated",
-                    content = @Content(schema = @Schema(implementation = AuthenticatedUserResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticatedUserResource.class))),
             @ApiResponse(responseCode = "400", description = "Malformed request",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "401", description = "Provider validation failed",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "409", description = "Provider identity or organization already exists",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class))),
             @ApiResponse(responseCode = "503", description = "Provider configuration is missing",
-                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+                    content = @Content(mediaType = APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResource.class)))
     })
     @PostMapping("/social/{provider}/organization-sign-up")
     public ResponseEntity<?> socialOrganizationSignUp(

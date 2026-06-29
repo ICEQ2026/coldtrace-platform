@@ -133,6 +133,19 @@ Local OpenAPI JSON:
 http://localhost:8080/v3/api-docs
 ```
 
+Swagger authentication flow:
+
+1. Execute `POST /api/v1/authentication/sign-in` with an existing ColdTrace
+   user.
+2. Copy the `token` value from the response.
+3. Click **Authorize** in Swagger UI and paste only the raw JWT value in
+   `bearerAuth`. Swagger sends it as `Authorization: Bearer <token>`.
+4. Use the returned `organizationId` when trying organization-scoped endpoints.
+
+Authentication, Swagger/OpenAPI, public subscription plans, and Stripe webhooks
+are public. Business endpoints such as reports, incidents, assets, maintenance,
+AI assistance, subscriptions, and billing management require Bearer JWT.
+
 ## AI Assistance Configuration
 
 TS18 adds the Spring AI foundation used by future AI-assisted incident,
@@ -455,6 +468,11 @@ Production OpenAPI JSON:
 ```text
 https://coldtrace-platform-dtbzbm7bta-uc.a.run.app/v3/api-docs
 ```
+
+In production Swagger UI, first call `POST /api/v1/authentication/sign-in`, then
+use **Authorize** with the returned JWT before executing protected endpoints.
+If a protected request returns `401`, verify that the token was added and that
+the route uses the `organizationId` from the authenticated user response.
 
 ## Connect to Cloud SQL Locally
 

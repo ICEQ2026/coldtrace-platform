@@ -13,7 +13,13 @@ import jakarta.validation.constraints.NotBlank;
  */
 @Schema(
         name = "SignInRequest",
-        description = "User sign-in request with credentials"
+        description = "User sign-in request with credentials",
+        example = """
+                {
+                  "email": "operator@coldtrace.test",
+                  "password": "ColdTrace123"
+                }
+                """
 )
 public record SignInResource(
         @NotBlank(message = "is required")
