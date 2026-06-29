@@ -5,8 +5,9 @@ skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
 left to right direction
 
-package "com.acme.coldtrace.platform.identityaccess" {
+package "com.acme.coldtrace.platform.iam" {
   package "interfaces.rest" {
+    class PasswordResetRequestsController <<controller>>
     class OrganizationSignUpsController <<controller>>
     class OrganizationsController <<controller>>
     class UsersController <<controller>>
@@ -17,6 +18,7 @@ package "com.acme.coldtrace.platform.identityaccess" {
     interface OrganizationSignUpCommandService <<service>>
     interface OrganizationCommandService <<service>>
     interface UserCommandService <<service>>
+    interface PasswordResetRequestCommandService <<service>>
   }
 
   package "application.queryservices" {
@@ -28,15 +30,18 @@ package "com.acme.coldtrace.platform.identityaccess" {
   package "domain.model.aggregates" {
     class Organization <<aggregate>>
     class User <<aggregate>>
+    class PasswordResetRequest <<aggregate>>
     class Role <<aggregate>>
   }
 
   package "domain.repositories" {
     interface OrganizationRepository <<repository>>
     interface UserRepository <<repository>>
+    interface PasswordResetRequestRepository <<repository>>
     interface RoleRepository <<repository>>
   }
 
+  PasswordResetRequestsController --> PasswordResetRequestCommandService
   OrganizationSignUpsController --> OrganizationSignUpCommandService
   OrganizationsController --> OrganizationCommandService
   OrganizationsController --> OrganizationQueryService
@@ -48,6 +53,8 @@ package "com.acme.coldtrace.platform.identityaccess" {
   OrganizationSignUpCommandService --> UserRepository
   UserCommandService --> UserRepository
   UserCommandService --> RoleRepository
+  PasswordResetRequestCommandService --> UserRepository
+  PasswordResetRequestCommandService --> PasswordResetRequestRepository
 }
 
 package "com.acme.coldtrace.platform.assetmanagement" {
