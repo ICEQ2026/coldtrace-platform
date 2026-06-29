@@ -16,7 +16,17 @@ import jakarta.validation.constraints.NotBlank;
  */
 @Schema(
         name = "SocialOrganizationSignUpRequest",
-        description = "Request payload for creating an organization and first user through a social provider"
+        description = "Request payload for creating an organization and first user through a social provider",
+        example = """
+                {
+                  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ...",
+                  "authorizationCode": null,
+                  "redirectUri": "https://coldtrace-frontend-liard.vercel.app/identity-access/sign-up",
+                  "nonce": "nonce-123",
+                  "organizationName": "ColdTrace Market",
+                  "fullName": "Jane Smith"
+                }
+                """
 )
 public record SocialOrganizationSignUpResource(
         @Schema(description = "Provider ID token", example = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ...")
