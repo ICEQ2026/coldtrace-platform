@@ -152,6 +152,48 @@ package "com.acme.coldtrace.platform.maintenancemanagement" {
   TechnicalServiceRequest --> Incident
 }
 
+package "com.acme.coldtrace.platform.billing" {
+  package "interfaces.rest" {
+    class SubscriptionPlansController <<controller>>
+    class OrganizationSubscriptionsController <<controller>>
+    class BillingCheckoutSessionsController <<controller>>
+    class BillingPortalSessionsController <<controller>>
+    class BillingStripeWebhooksController <<controller>>
+  }
+
+  package "application.commandservices" {
+    interface BillingCheckoutSessionCommandService <<service>>
+    interface BillingPortalSessionCommandService <<service>>
+    interface BillingWebhookCommandService <<service>>
+  }
+
+  package "application.queryservices" {
+    interface SubscriptionPlanQueryService <<service>>
+    interface OrganizationSubscriptionQueryService <<service>>
+  }
+
+  package "domain.model.aggregates" {
+    class SubscriptionPlan <<aggregate>>
+    class OrganizationSubscription <<aggregate>>
+  }
+
+  package "domain.repositories" {
+    interface SubscriptionPlanRepository <<repository>>
+    interface OrganizationSubscriptionRepository <<repository>>
+    interface BillingWebhookEventRepository <<repository>>
+  }
+
+  BillingCheckoutSessionsController --> BillingCheckoutSessionCommandService
+  BillingPortalSessionsController --> BillingPortalSessionCommandService
+  BillingStripeWebhooksController --> BillingWebhookCommandService
+  SubscriptionPlansController --> SubscriptionPlanQueryService
+  OrganizationSubscriptionsController --> OrganizationSubscriptionQueryService
+  BillingCheckoutSessionCommandService --> OrganizationSubscriptionRepository
+  BillingPortalSessionCommandService --> OrganizationSubscriptionRepository
+  BillingWebhookCommandService --> BillingWebhookEventRepository
+  OrganizationSubscription --> SubscriptionPlan
+}
+
 package "com.acme.coldtrace.platform.shared" {
   package "application.result" {
     class Result <<value>>
