@@ -1,8 +1,14 @@
 .git
+.github
+.idea
+.vscode
 target
+build
+dist
+bruno
+.DS_Store
 .env
 .env.*
 !.env.example
-.DS_Store
-.idea
-.vscode
+*.iml
+*.log
