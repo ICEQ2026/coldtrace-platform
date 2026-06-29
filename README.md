@@ -267,8 +267,8 @@ Required environment for a real test-mode Stripe redirect:
 export STRIPE_SECRET_KEY=<stripe-test-secret-key>
 export STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
 export STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
-export BILLING_CHECKOUT_SUCCESS_URL="http://localhost:4200/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"
-export BILLING_CHECKOUT_CANCEL_URL="http://localhost:4200/identity-access/billing?checkout=cancel"
+export BILLING_CHECKOUT_SUCCESS_URL="http://localhost:4200/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"
+export BILLING_CHECKOUT_CANCEL_URL="http://localhost:4200/settings/billing?checkout=cancel"
 ```
 
 Expected result:
@@ -341,7 +341,7 @@ Required environment for a real test-mode portal redirect:
 
 ```bash
 export STRIPE_SECRET_KEY=<stripe-test-secret-key>
-export BILLING_CUSTOMER_PORTAL_RETURN_URL="http://localhost:4200/identity-access/billing?portal=return"
+export BILLING_CUSTOMER_PORTAL_RETURN_URL="http://localhost:4200/settings/billing?portal=return"
 ```
 
 Expected result:
@@ -398,9 +398,9 @@ STRIPE_OPERATIONS_PRICE_ID=<stripe-test-price-id>
 STRIPE_COMPLIANCE_AI_PRICE_ID=<stripe-test-price-id>
 STRIPE_SECRET_KEY=<stripe-test-secret-key>
 STRIPE_WEBHOOK_SECRET=<stripe-webhook-signing-secret>
-BILLING_CHECKOUT_SUCCESS_URL=https://<frontend-domain>/identity-access/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}
-BILLING_CHECKOUT_CANCEL_URL=https://<frontend-domain>/identity-access/billing?checkout=cancel
-BILLING_CUSTOMER_PORTAL_RETURN_URL=https://<frontend-domain>/identity-access/billing?portal=return
+BILLING_CHECKOUT_SUCCESS_URL=https://<frontend-domain>/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}
+BILLING_CHECKOUT_CANCEL_URL=https://<frontend-domain>/settings/billing?checkout=cancel
+BILLING_CUSTOMER_PORTAL_RETURN_URL=https://<frontend-domain>/settings/billing?portal=return
 ```
 
 For Apple in production, `APPLE_PRIVATE_KEY` must be configured as a protected
@@ -414,12 +414,28 @@ the Cloud SQL Java Connector:
 spring.datasource.url=jdbc:mysql:///${DATABASE_NAME}?cloudSqlInstance=${INSTANCE_CONNECTION_NAME}&socketFactory=com.google.cloud.sql.mysql.SocketFactory&cloudSqlRefreshStrategy=lazy&serverTimezone=UTC
 ```
 
-Cloud Build continuous deployment should use:
+DevOps configuration is documented in `docs/devops.md`. The repository includes:
+
+- `Dockerfile` for the production Cloud Run container.
+- `.dockerignore` for reproducible image contexts.
+- `.env.example` for local environment setup without committed secrets.
+- `.github/workflows/backend-ci.yml` for pull-request and branch CI.
+- `.github/workflows/cloud-run-deploy.yml` for manual GitHub Actions deploys
+  after Google Cloud Workload Identity secrets are configured.
+- `cloudbuild.yaml` for reproducible Google Cloud Build deployments.
+
+The existing Cloud Build trigger can keep using:
 
 ```text
 Branch regex: ^main$
 Build type: Dockerfile
 Dockerfile location: /Dockerfile
+```
+
+For a manual Cloud Build deployment:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml --project coldtrace-499222
 ```
 
 Production API:

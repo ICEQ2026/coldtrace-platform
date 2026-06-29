@@ -1,0 +1,71 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Optional image tag. Defaults to the workflow run SHA.
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_REGION: us-central1
+  CLOUD_RUN_SERVICE: coldtrace-platform
+  ARTIFACT_REPOSITORY: coldtrace-docker
+  IMAGE_NAME: coldtrace-platform
+
+jobs:
+  deploy:
+    name: Build image and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Resolve image coordinates
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_SHA}"
+          fi
+          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}"
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag "${IMAGE_URI}:${IMAGE_TAG}" \
+            --tag "${IMAGE_URI}:latest" \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push "${IMAGE_URI}:${IMAGE_TAG}"
+          docker push "${IMAGE_URI}:latest"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          region: ${{ env.GCP_REGION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          image: ${{ env.IMAGE_URI }}:${{ env.IMAGE_TAG }}
