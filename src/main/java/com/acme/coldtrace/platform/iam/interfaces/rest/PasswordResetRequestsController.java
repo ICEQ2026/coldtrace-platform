@@ -1,9 +1,13 @@
 package com.acme.coldtrace.platform.iam.interfaces.rest;
 
 import com.acme.coldtrace.platform.iam.application.commandservices.PasswordResetRequestCommandService;
+import com.acme.coldtrace.platform.iam.interfaces.rest.resources.ConfirmPasswordResetResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.CreatePasswordResetRequestResource;
+import com.acme.coldtrace.platform.iam.interfaces.rest.resources.PasswordResetConfirmationResource;
 import com.acme.coldtrace.platform.iam.interfaces.rest.resources.PasswordResetRequestResource;
+import com.acme.coldtrace.platform.iam.interfaces.rest.transform.ConfirmPasswordResetCommandFromResourceAssembler;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.CreatePasswordResetRequestCommandFromResourceAssembler;
+import com.acme.coldtrace.platform.iam.interfaces.rest.transform.PasswordResetConfirmationResourceFromResultAssembler;
 import com.acme.coldtrace.platform.iam.interfaces.rest.transform.PasswordResetRequestResourceFromResultAssembler;
 import com.acme.coldtrace.platform.shared.interfaces.rest.resources.ErrorResource;
 import com.acme.coldtrace.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
@@ -32,7 +36,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 @RestController
 @RequestMapping(value = "/api/v1/password-reset-requests", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Password Reset Requests", description = "Password recovery request endpoints")
+@Tag(name = "Password Reset Requests", description = "Password recovery request and confirmation endpoints")
 public class PasswordResetRequestsController {
     private final PasswordResetRequestCommandService passwordResetRequestCommandService;
 
@@ -68,6 +72,39 @@ public class PasswordResetRequestsController {
                 result,
                 PasswordResetRequestResourceFromResultAssembler::toResourceFromResult,
                 HttpStatus.ACCEPTED
+        );
+    }
+
+    /**
+     * Confirms a password reset token and changes the user password.
+     *
+     * @param resource password reset confirmation payload
+     * @return confirmation response or standardized error response
+     */
+    @Operation(
+            summary = "Confirm password reset",
+            description = "Consumes a one-time password reset token received by email and updates the user password")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset confirmed",
+                    content = @Content(schema = @Schema(implementation = PasswordResetConfirmationResource.class))),
+            @ApiResponse(responseCode = "400", description = "Malformed request",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+            @ApiResponse(responseCode = "422", description = "Invalid or expired reset token",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class))),
+            @ApiResponse(responseCode = "500", description = "Password reset confirmation could not be prepared",
+                    content = @Content(schema = @Schema(implementation = ErrorResource.class)))
+    })
+    @PostMapping(value = "/confirmations", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> confirmPasswordReset(
+            @Valid @RequestBody ConfirmPasswordResetResource resource
+    ) {
+        log.debug("POST /api/v1/password-reset-requests/confirmations");
+        var command = ConfirmPasswordResetCommandFromResourceAssembler.toCommandFromResource(resource);
+        var result = passwordResetRequestCommandService.handle(command);
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PasswordResetConfirmationResourceFromResultAssembler::toResourceFromResult,
+                HttpStatus.OK
         );
     }
 }

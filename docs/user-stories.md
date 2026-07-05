@@ -124,7 +124,8 @@ Contract:
 - Success returns `202 Accepted` with `accepted`, `requestedAt`, `expiresAt`, and `deliveryStatus`.
 - The response is generic and does not reveal whether the email exists.
 - Existing users generate persisted reset metadata with a hashed token only.
-- Email delivery and password update confirmation are out of scope for this ticket.
+- SMTP delivery sends the raw one-time token only through the recovery email.
+- `POST /api/v1/password-reset-requests/confirmations` consumes the token and updates the password hash.
 
 Acceptance criteria:
 

@@ -1,6 +1,7 @@
 package com.acme.coldtrace.platform.iam.application.commandservices;
 
 import com.acme.coldtrace.platform.iam.domain.model.commands.CreatePasswordResetRequestCommand;
+import com.acme.coldtrace.platform.iam.domain.model.commands.ConfirmPasswordResetCommand;
 import com.acme.coldtrace.platform.shared.application.result.ApplicationError;
 import com.acme.coldtrace.platform.shared.application.result.Result;
 
@@ -17,4 +18,12 @@ public interface PasswordResetRequestCommandService {
      * @return accepted response or controlled application error
      */
     Result<PasswordResetRequestCommandResult, ApplicationError> handle(CreatePasswordResetRequestCommand command);
+
+    /**
+     * Confirms a password reset request and changes the user password.
+     *
+     * @param command confirmation command
+     * @return password reset confirmation response or controlled application error
+     */
+    Result<PasswordResetConfirmationCommandResult, ApplicationError> handle(ConfirmPasswordResetCommand command);
 }

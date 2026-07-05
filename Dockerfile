@@ -48,6 +48,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # - DATABASE_PASSWORD: The password for the database connection.
 # - INSTANCE_CONNECTION_NAME: The Cloud SQL instance connection name.
 # - JWT_SECRET: Secret used to sign JWT tokens.
+# - PASSWORD_RESET_EMAIL_ENABLED, PASSWORD_RESET_EMAIL_FROM, PASSWORD_RESET_FRONTEND_RESET_URL, and SMTP_* for recovery email delivery.
 # - AI_MODEL_PROVIDER, AI_MODEL_NAME, and provider API keys for AI assistance.
 # - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and Stripe price ids for billing.
 # - PORT: The port on which the application will run (default is 8080).
