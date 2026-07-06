@@ -59,11 +59,17 @@ public class AiAssistanceCommandServiceImpl implements AiAssistanceCommandServic
 
             Requirements:
             - Include summary, attentionLevel, metric-level insights, risks, recommended actions, and uncertainty notes.
+            - If dashboardContext.operatorQuestion is present, answer that question directly in the summary before adding context.
+            - Make metric-level insights support the operator question when a question is present; avoid generic dashboard facts that do not help answer it.
+            - For questions asking which asset, device, incident, or maintenance item is affected, use concrete names and identifiers from the backend context when available.
+            - If the exact requested entity cannot be determined from the context, state the missing evidence clearly instead of implying certainty.
             - The attentionLevel must be one concise operational label such as stable, attention recommended, or critical attention.
             - Return exactly 3 insights, exactly 2 risks, exactly 2 recommendedActions, and exactly 1 uncertaintyNotes item.
             - Keep summary under 240 characters.
             - Keep every insight title under 50 characters and every insight interpretation under 180 characters.
+            - Set every insight metric to a short metric key only, such as openIncidents, recentIncidents, referencedAssets, outOfRangeReadings, thermalCompliance, devicesWithUnhealthyStatus, or technicalServiceRequests.
             - Keep every risk, recommendedAction, and uncertaintyNote under 160 characters.
+            - Return risks, recommendedActions, and uncertaintyNotes as plain sentence strings only; never use objects, JSON fragments, labels, title/description pairs, or embedded property names inside those arrays.
             - Keep every string short and operational; use one sentence per item.
             - Write every user-facing string value in the response language above.
             - If the response language is Spanish, do not answer in English; translate summary, attentionLevel, insight titles, insight interpretations, risks, recommendedActions, and uncertaintyNotes to Spanish.

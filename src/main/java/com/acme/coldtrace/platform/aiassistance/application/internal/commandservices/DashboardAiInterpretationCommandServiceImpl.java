@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.acme.coldtrace.platform.billing.interfaces.acl.SubscriptionBillingContextFacade.ENTITLEMENT_AI_GUIDANCE;
@@ -180,6 +181,7 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
                 .limit(MAX_RECENT_REPORTS)
                 .toList();
         var assets = fetchReferencedAssets(organizationId, readings, incidents);
+        var assetNamesById = toAssetNamesById(assets);
         var devices = fetchReferencedDevices(organizationId, readings);
         var gateways = fetchReferencedGateways(organizationId, readings, devices);
         var maintenanceSchedules = fetchMaintenanceSchedules(organizationId, assets);
@@ -204,7 +206,10 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
                 metrics,
                 sourceMetrics,
                 readings.stream().limit(MAX_RECENT_READINGS).map(this::toReadingEvidenceContext).toList(),
-                incidents.stream().limit(MAX_RECENT_INCIDENTS).map(this::toIncidentEvidenceContext).toList(),
+                incidents.stream()
+                        .limit(MAX_RECENT_INCIDENTS)
+                        .map(incident -> toIncidentEvidenceContext(incident, assetNamesById))
+                        .toList(),
                 assets.stream().limit(MAX_ASSET_EVIDENCE).map(this::toAssetEvidenceContext).toList(),
                 devices.stream().limit(MAX_DEVICE_EVIDENCE).map(this::toDeviceEvidenceContext).toList(),
                 gateways.stream().limit(MAX_GATEWAY_EVIDENCE).map(this::toGatewayEvidenceContext).toList(),
@@ -222,6 +227,14 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
                 buildEvidenceNotes(readings, incidents, assets, devices, gateways, reports,
                         maintenanceSchedules, technicalServiceRequests)
         );
+    }
+
+    private Map<Long, String> toAssetNamesById(List<AssetSnapshot> assets) {
+        var namesById = new LinkedHashMap<Long, String>();
+        assets.stream()
+                .filter(asset -> asset.id() != null)
+                .forEach(asset -> namesById.putIfAbsent(asset.id(), limitText(asset.name(), 120)));
+        return namesById;
     }
 
     private String resolveResponseLanguage(GenerateDashboardAiInterpretationCommand command) {
@@ -677,10 +690,13 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
         );
     }
 
-    private IncidentEvidenceContext toIncidentEvidenceContext(IncidentSnapshot incident) {
+    private IncidentEvidenceContext toIncidentEvidenceContext(
+            IncidentSnapshot incident,
+            Map<Long, String> assetNamesById) {
         return new IncidentEvidenceContext(
                 incident.id(),
                 incident.assetId(),
+                assetNamesById.get(incident.assetId()),
                 limitText(incident.status(), 80),
                 incident.detectedAt(),
                 incident.isOpen()
@@ -1035,6 +1051,7 @@ public class DashboardAiInterpretationCommandServiceImpl implements DashboardAiI
     private record IncidentEvidenceContext(
             Long id,
             Long assetId,
+            String assetName,
             String status,
             Instant detectedAt,
             Boolean open
