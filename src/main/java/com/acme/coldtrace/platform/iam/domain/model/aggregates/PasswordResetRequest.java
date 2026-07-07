@@ -75,4 +75,44 @@ public class PasswordResetRequest extends AbstractDomainAggregateRoot<PasswordRe
     public EmailAddress getEmailValue() {
         return this.email;
     }
+
+    /**
+     * Checks whether the reset token has already been consumed.
+     *
+     * @return true when the request was consumed
+     */
+    public boolean isConsumed() {
+        return this.consumedAt != null;
+    }
+
+    /**
+     * Checks whether the reset token has expired.
+     *
+     * @param checkedAt timestamp used for the expiration check
+     * @return true when the request has expired
+     */
+    public boolean isExpiredAt(Instant checkedAt) {
+        if (checkedAt == null) {
+            throw new IllegalArgumentException("identity-access.password-reset.error.expiration.invalid");
+        }
+        return !this.expiresAt.isAfter(checkedAt);
+    }
+
+    /**
+     * Marks the reset request as consumed.
+     *
+     * @param consumedAt consumption timestamp
+     */
+    public void consume(Instant consumedAt) {
+        if (consumedAt == null) {
+            throw new IllegalArgumentException("identity-access.password-reset.error.expiration.invalid");
+        }
+        if (isConsumed()) {
+            throw new IllegalArgumentException("identity-access.password-reset.error.token.invalid");
+        }
+        if (isExpiredAt(consumedAt)) {
+            throw new IllegalArgumentException("identity-access.password-reset.error.token.expired");
+        }
+        this.consumedAt = consumedAt;
+    }
 }

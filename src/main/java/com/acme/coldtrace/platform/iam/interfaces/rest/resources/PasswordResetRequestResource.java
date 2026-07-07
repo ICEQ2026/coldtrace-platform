@@ -10,7 +10,7 @@ import java.time.Instant;
  * @param accepted whether the request was accepted
  * @param requestedAt acceptance timestamp
  * @param expiresAt request expiration timestamp
- * @param deliveryStatus delivery state for the academic flow
+ * @param deliveryStatus generic delivery state for the recovery flow
  * @since 1.0
  */
 @Schema(
@@ -27,7 +27,7 @@ public record PasswordResetRequestResource(
         @Schema(description = "Timestamp when the reset request expires")
         Instant expiresAt,
 
-        @Schema(description = "Delivery state for the reset email integration", example = "EMAIL_DELIVERY_NOT_CONFIGURED")
+        @Schema(description = "Generic delivery state for the reset email integration", example = "REQUEST_ACCEPTED")
         String deliveryStatus
 ) {
 }

@@ -402,6 +402,15 @@ APPLE_OAUTH_REDIRECT_URI=<configured-apple-redirect-uri>
 APPLE_TEAM_ID=<apple-team-id>
 APPLE_KEY_ID=<apple-key-id>
 APPLE_PRIVATE_KEY=<apple-private-key-p8-content>
+PASSWORD_RESET_EMAIL_ENABLED=true
+PASSWORD_RESET_EMAIL_FROM=<smtp-sender-email>
+PASSWORD_RESET_FRONTEND_RESET_URL=https://<frontend-domain>/identity-access/reset-password
+SMTP_HOST=<smtp-host>
+SMTP_PORT=587
+SMTP_USERNAME=<smtp-username>
+SMTP_PASSWORD=<smtp-password-or-app-password>
+SMTP_AUTH=true
+SMTP_STARTTLS_ENABLE=true
 CORS_ALLOWED_ORIGIN_PATTERNS=https://coldtrace-frontend-liard.vercel.app,https://coldtrace-frontend-*.vercel.app,https://coldtrace-frontend-git-*-mauricio-pajes-projects.vercel.app
 AI_MODEL_PROVIDER=openai
 AI_MODEL_NAME=gpt-5.4-mini
@@ -721,8 +730,38 @@ HTTP/1.1 202
 
 The response is intentionally generic and does not reveal whether the submitted
 email belongs to a ColdTrace user. Existing users generate persisted reset
-metadata with a hashed token only; the raw token and email delivery are not
-exposed by this academic endpoint.
+metadata with a hashed token only. When SMTP is configured, the raw one-time
+token is delivered only through the recovery email link.
+
+Password reset email delivery requires:
+
+```bash
+export PASSWORD_RESET_EMAIL_ENABLED=true
+export PASSWORD_RESET_EMAIL_FROM=<smtp-sender-email>
+export PASSWORD_RESET_FRONTEND_RESET_URL="http://localhost:4200/identity-access/reset-password"
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USERNAME=<smtp-username>
+export SMTP_PASSWORD=<smtp-password-or-google-app-password>
+export SMTP_AUTH=true
+export SMTP_STARTTLS_ENABLE=true
+```
+
+Password reset confirmation:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/password-reset-requests/confirmations \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<email-token>","password":"ColdTrace123"}'
+```
+
+Expected result:
+
+```text
+HTTP/1.1 200
+```
+
+Reset tokens expire after 30 minutes and can be consumed only once.
 
 ## Package Map
 
@@ -754,8 +793,9 @@ Context responsibilities:
 
 Password reset requests are accepted through a public endpoint because the user
 does not have a valid JWT during the recovery flow. The API returns a generic
-accepted response and records only hashed token metadata for existing users;
-email delivery and password update confirmation remain outside this ticket.
+accepted response and records only hashed token metadata for existing users.
+SMTP delivery sends the raw token through the recovery email, and the public
+confirmation endpoint consumes that token before updating the password hash.
 Authentication uses ColdTrace JWT sessions; business APIs still preserve
 organization ownership through route parameters.
 
@@ -768,6 +808,7 @@ Identity access:
 | `/authentication/sign-in` | `POST` |
 | `/authentication/social/{provider}/token-exchange` | `POST` |
 | `/password-reset-requests` | `POST` |
+| `/password-reset-requests/confirmations` | `POST` |
 | `/organization-sign-ups` | `POST` |
 | `/organizations` | `GET`, `POST` |
 | `/roles` | `GET` |

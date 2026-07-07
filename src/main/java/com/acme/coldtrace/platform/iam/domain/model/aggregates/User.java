@@ -112,4 +112,17 @@ public class User extends AbstractDomainAggregateRoot<User> {
         }
         this.roleId = command.roleId();
     }
+
+    /**
+     * Changes the encoded password stored for this user.
+     *
+     * @param passwordHash encoded password
+     * @throws IllegalArgumentException if the password hash is blank
+     */
+    public void changePasswordHash(String passwordHash) {
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("identity-access.user.error.password.required");
+        }
+        this.passwordHash = passwordHash;
+    }
 }

@@ -1,8 +1,12 @@
 package com.acme.coldtrace.platform.iam.application.internal.commandservices;
 
+import com.acme.coldtrace.platform.iam.application.commandservices.PasswordResetConfirmationCommandResult;
 import com.acme.coldtrace.platform.iam.application.commandservices.PasswordResetRequestCommandResult;
 import com.acme.coldtrace.platform.iam.application.commandservices.PasswordResetRequestCommandService;
+import com.acme.coldtrace.platform.iam.application.internal.outboundservices.email.PasswordResetEmailDeliveryService;
+import com.acme.coldtrace.platform.iam.application.internal.outboundservices.hashing.HashingService;
 import com.acme.coldtrace.platform.iam.domain.model.aggregates.PasswordResetRequest;
+import com.acme.coldtrace.platform.iam.domain.model.commands.ConfirmPasswordResetCommand;
 import com.acme.coldtrace.platform.iam.domain.model.commands.CreatePasswordResetRequestCommand;
 import com.acme.coldtrace.platform.iam.domain.repositories.PasswordResetRequestRepository;
 import com.acme.coldtrace.platform.iam.domain.repositories.UserRepository;
@@ -31,18 +35,25 @@ import java.util.HexFormat;
 public class PasswordResetRequestCommandServiceImpl implements PasswordResetRequestCommandService {
     private static final int TOKEN_BYTE_LENGTH = 32;
     private static final Duration TOKEN_TTL = Duration.ofMinutes(30);
-    private static final String DELIVERY_NOT_CONFIGURED = "EMAIL_DELIVERY_NOT_CONFIGURED";
+    private static final String DELIVERY_ACCEPTED = "REQUEST_ACCEPTED";
+    private static final String INVALID_TOKEN = "identity-access.password-reset.error.token.invalid";
 
     private final UserRepository userRepository;
     private final PasswordResetRequestRepository passwordResetRequestRepository;
+    private final PasswordResetEmailDeliveryService passwordResetEmailDeliveryService;
+    private final HashingService hashingService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PasswordResetRequestCommandServiceImpl(
             UserRepository userRepository,
-            PasswordResetRequestRepository passwordResetRequestRepository
+            PasswordResetRequestRepository passwordResetRequestRepository,
+            PasswordResetEmailDeliveryService passwordResetEmailDeliveryService,
+            HashingService hashingService
     ) {
         this.userRepository = userRepository;
         this.passwordResetRequestRepository = passwordResetRequestRepository;
+        this.passwordResetEmailDeliveryService = passwordResetEmailDeliveryService;
+        this.hashingService = hashingService;
     }
 
     /**
@@ -74,13 +85,62 @@ public class PasswordResetRequestCommandServiceImpl implements PasswordResetRequ
                     expiresAt
             );
             passwordResetRequestRepository.save(request);
-            log.info("Password reset request accepted: userId={}", user.get().getId());
+            var deliveryResult = passwordResetEmailDeliveryService.sendPasswordResetLink(
+                    command.email(),
+                    rawToken,
+                    expiresAt
+            );
+            log.info(
+                    "Password reset request accepted: userId={}, deliveryResult={}",
+                    user.get().getId(),
+                    deliveryResult
+            );
             return accepted(requestedAt, expiresAt);
         } catch (NoSuchAlgorithmException exception) {
             log.error("Password reset token hashing failed", exception);
             return Result.failure(new ApplicationError(
                     "UNEXPECTED_ERROR",
                     "Password reset request could not be prepared",
+                    "identity-access.password-reset.error.request-failed"
+            ));
+        }
+    }
+
+    /**
+     * Handles password reset confirmation by consuming a valid token and changing the password hash.
+     *
+     * @param command confirmation command
+     * @return confirmation result or controlled application error
+     */
+    @Override
+    @Transactional
+    public Result<PasswordResetConfirmationCommandResult, ApplicationError> handle(ConfirmPasswordResetCommand command) {
+        try {
+            var now = Instant.now();
+            var tokenHash = hashResetToken(command.token());
+            var request = passwordResetRequestRepository.findByTokenHash(tokenHash)
+                    .orElse(null);
+
+            if (request == null || request.isConsumed() || request.isExpiredAt(now)) {
+                return invalidTokenFailure();
+            }
+
+            var user = userRepository.findById(request.getUserId()).orElse(null);
+            if (user == null) {
+                return invalidTokenFailure();
+            }
+
+            user.changePasswordHash(hashingService.encode(command.password()));
+            userRepository.save(user);
+            request.consume(now);
+            passwordResetRequestRepository.save(request);
+            log.info("Password reset confirmed: userId={}", user.getId());
+            return Result.success(new PasswordResetConfirmationCommandResult(true));
+        } catch (NoSuchAlgorithmException exception) {
+            log.error("Password reset token hashing failed", exception);
+            return Result.failure(new ApplicationError(
+                    "UNEXPECTED_ERROR",
+                    "Password reset confirmation could not be prepared",
                     "identity-access.password-reset.error.request-failed"
             ));
         }
@@ -94,8 +154,12 @@ public class PasswordResetRequestCommandServiceImpl implements PasswordResetRequ
                 true,
                 requestedAt,
                 expiresAt,
-                DELIVERY_NOT_CONFIGURED
+                DELIVERY_ACCEPTED
         ));
+    }
+
+    private static Result<PasswordResetConfirmationCommandResult, ApplicationError> invalidTokenFailure() {
+        return Result.failure(ApplicationError.businessRuleViolation(INVALID_TOKEN));
     }
 
     private String generateResetToken() {
