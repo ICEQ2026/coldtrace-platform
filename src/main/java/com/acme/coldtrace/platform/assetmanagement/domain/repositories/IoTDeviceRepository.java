@@ -57,4 +57,12 @@ public interface IoTDeviceRepository {
      * @return true when another device uses the uuid
      */
     boolean existsByOrganizationIdAndUuidAndIdNot(Long organizationId, String uuid, Long id);
+
+    /**
+     * Deletes an IoT device by identifier after the application service has
+     * checked organization ownership.
+     *
+     * @param id IoT device identifier
+     */
+    void deleteById(Long id);
 }

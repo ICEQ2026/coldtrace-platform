@@ -6,6 +6,7 @@ import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Asset
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.Gateway;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.aggregates.IoTDevice;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.CreateIoTDeviceCommand;
+import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.DeleteIoTDeviceCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.model.commands.UpdateIoTDeviceCommand;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.AssetRepository;
 import com.acme.coldtrace.platform.assetmanagement.domain.repositories.GatewayRepository;
@@ -134,6 +135,37 @@ public class IoTDeviceCommandServiceImpl implements IoTDeviceCommandService {
                 return Result.failure(new IoTDeviceCommandFailure.DuplicateUuid());
             }
             throw exception;
+        }
+    }
+
+    /**
+     * Handles deletion of an IoT device aggregate.
+     *
+     * @param command command containing route-scoped deletion identifiers
+     * @return success with the command or failure with command error
+     * @see DeleteIoTDeviceCommand
+     */
+    @Override
+    @Transactional
+    public Result<DeleteIoTDeviceCommand, IoTDeviceCommandFailure> handle(DeleteIoTDeviceCommand command) {
+        if (!organizationRepository.existsById(command.organizationId())) {
+            log.warn("Organization not found for IoT device deletion: organizationId={}", command.organizationId());
+            return Result.failure(new IoTDeviceCommandFailure.OrganizationNotFound());
+        }
+        if (iotDeviceRepository.findByIdAndOrganizationId(command.iotDeviceId(), command.organizationId()).isEmpty()) {
+            log.warn("IoT device not found for deletion: organizationId={}, iotDeviceId={}",
+                    command.organizationId(), command.iotDeviceId());
+            return Result.failure(new IoTDeviceCommandFailure.IoTDeviceNotFound());
+        }
+        try {
+            iotDeviceRepository.deleteById(command.iotDeviceId());
+            log.info("IoT device deleted: id={}, organizationId={}",
+                    command.iotDeviceId(), command.organizationId());
+            return Result.success(command);
+        } catch (DataIntegrityViolationException exception) {
+            log.warn("IoT device deletion blocked by related records: organizationId={}, iotDeviceId={}",
+                    command.organizationId(), command.iotDeviceId());
+            return Result.failure(new IoTDeviceCommandFailure.DeleteBlocked());
         }
     }
 

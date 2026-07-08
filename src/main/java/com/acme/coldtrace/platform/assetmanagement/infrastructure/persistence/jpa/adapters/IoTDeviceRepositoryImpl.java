@@ -82,4 +82,13 @@ public class IoTDeviceRepositoryImpl implements IoTDeviceRepository {
                 id
         );
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteById(Long id) {
+        iotDevicePersistenceRepository.deleteById(id);
+        iotDevicePersistenceRepository.flush();
+    }
 }
